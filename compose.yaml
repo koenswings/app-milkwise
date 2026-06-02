@@ -1,0 +1,35 @@
+x-app:
+  name: milkwise
+  title: MilkWise
+  description: >
+    MilkWise is a precision bottle-feeding tracker for parents of formula-fed
+    and combination-fed infants. It calculates personalised daily targets based
+    on the baby's weight and tracks intake using a Smoothed Effective formula
+    that gives partial credit to older feeds — providing a more accurate and
+    stable picture of daily nutrition than a simple 24h window.
+
+    Features: feed logging, Smoothed Effective + Strict 24h dashboards, analytics,
+    history with edit/delete, CSV export, and CSV import for historic data.
+  url: https://github.com/koenswings/app-milkwise
+  category: health
+  icon: icon.png
+  author: Koen Swings
+  version: 1.0.0
+  instanceName: milkwise
+
+services:
+  milkwise:
+    build:
+      context: ./app
+      dockerfile: Dockerfile
+    image: koenswings/milkwise:1.0.0
+    init: true
+    restart: unless-stopped
+    pull_policy: never
+    volumes:
+      - ./data:/app/data
+    network_mode: "host"
+    environment:
+      - PORT=${port:-3333}
+      - DATA_DIR=/app/data
+      - NODE_ENV=production
