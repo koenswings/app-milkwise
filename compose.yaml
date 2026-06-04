@@ -33,3 +33,4 @@ services:
       - PORT=${port:-3333}
       - DATA_DIR=/app/data
       - NODE_ENV=production
+      - HOSTNAME=0.0.0.0
