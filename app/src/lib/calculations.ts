@@ -1,20 +1,62 @@
 import { Feed, Settings, DerivedSettings, FeedWithCredit } from "@/types";
 
 /**
- * Formula preparation conversion factor.
- * 1 scoop + 30 ml water = ~35 ml prepared formula.
- * So every ml of water in the bottle yields 35/30 ml of prepared formula.
+ * Water → prepared formula conversion.
  *
- * The 150 ml/kg/day target refers to PREPARED FORMULA (milk ml).
+ * The 150 ml/kg/day target refers to PREPARED FORMULA ml.
  * Logged feed volumes are in WATER ml (what you measure into the bottle).
- * We must convert before comparing.
+ * The ratio is NOT constant — it varies by bottle size per manufacturer table:
+ *
+ *   Water ml | Formula ml
+ *   ---------|-----------
+ *       30   |    35
+ *       60   |    70
+ *       90   |   100
+ *      120   |   135
+ *      150   |   170
+ *      180   |   200
+ *      210   |   240
+ *
+ * For volumes between table entries, linear interpolation is used.
+ * For volumes outside the table range, the nearest segment slope is extrapolated.
  */
-export const WATER_TO_MILK_RATIO = 35 / 30; // ~1.1667
+export const FORMULA_TABLE: { water: number; formula: number }[] = [
+  { water:  30, formula:  35 },
+  { water:  60, formula:  70 },
+  { water:  90, formula: 100 },
+  { water: 120, formula: 135 },
+  { water: 150, formula: 170 },
+  { water: 180, formula: 200 },
+  { water: 210, formula: 240 },
+];
 
-/** Convert a logged water-volume to prepared-formula volume. */
+/** Convert a logged water-volume to prepared-formula volume using interpolation. */
 export function waterToMilk(waterMl: number): number {
-  return waterMl * WATER_TO_MILK_RATIO;
+  const t = FORMULA_TABLE;
+  // Below lowest entry — extrapolate from first segment
+  if (waterMl <= t[0].water) {
+    const slope = (t[1].formula - t[0].formula) / (t[1].water - t[0].water);
+    return t[0].formula + slope * (waterMl - t[0].water);
+  }
+  // Above highest entry — extrapolate from last segment
+  const last = t.length - 1;
+  if (waterMl >= t[last].water) {
+    const slope = (t[last].formula - t[last - 1].formula) / (t[last].water - t[last - 1].water);
+    return t[last].formula + slope * (waterMl - t[last].water);
+  }
+  // Interpolate between bracketing entries
+  for (let i = 0; i < last; i++) {
+    if (waterMl >= t[i].water && waterMl <= t[i + 1].water) {
+      const frac = (waterMl - t[i].water) / (t[i + 1].water - t[i].water);
+      return t[i].formula + frac * (t[i + 1].formula - t[i].formula);
+    }
+  }
+  // Fallback (should never reach here)
+  return waterMl * (100 / 90);
 }
+
+/** @deprecated use FORMULA_TABLE — no single ratio exists */
+export const WATER_TO_MILK_RATIO = 100 / 90; // 90ml water → 100ml formula (most common bottle)
 
 export function deriveSettings(settings: Settings): DerivedSettings {
   const dailyTargetMl = settings.weightKg * settings.mlPerKgPerDay; // milk ml

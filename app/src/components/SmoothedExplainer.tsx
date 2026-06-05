@@ -1,7 +1,7 @@
 "use client";
 
 import { Feed } from "@/types";
-import { bottleCredit, waterToMilk, WATER_TO_MILK_RATIO } from "@/lib/calculations";
+import { bottleCredit, waterToMilk, FORMULA_TABLE } from "@/lib/calculations";
 
 interface Props {
   onClose: () => void;
@@ -57,11 +57,23 @@ export default function SmoothedExplainer({ onClose, hourlyRate, standardBottleV
           <section>
             <h3 className="font-semibold text-slate-100 mb-1">Water ml vs. prepared formula ml</h3>
             <p>
-              You log bottles in <strong>water ml</strong> (e.g. 90 ml of water). But the 150 ml/kg/day
-              target refers to <strong>prepared formula ml</strong> — after mixing in the powder.
-              Every 30 ml of water yields ~35 ml of formula, so the app multiplies logged volumes
-              by <strong>{WATER_TO_MILK_RATIO.toFixed(4)}</strong> before comparing against your target.
-              A 90 ml bottle = {(90 * WATER_TO_MILK_RATIO).toFixed(0)} ml of prepared formula.
+              You log bottles in <strong>water ml</strong> (what you measure into the bottle).
+              But the 150 ml/kg/day target refers to <strong>prepared formula ml</strong> —
+              after mixing in the powder. The conversion ratio is <em>not constant</em>;
+              it varies slightly by bottle size:
+            </p>
+            <div className="mt-2 grid grid-cols-2 gap-x-4 text-xs text-slate-400 font-mono">
+              <span className="text-slate-500">Water ml</span><span className="text-slate-500">Formula ml</span>
+              {FORMULA_TABLE.map(({ water, formula }) => (
+                <>
+                  <span key={`w${water}`}>{water} ml</span>
+                  <span key={`f${water}`}>{formula} ml</span>
+                </>
+              ))}
+            </div>
+            <p className="mt-2">
+              The app interpolates between these values for any bottle size.
+              A <strong>90 ml bottle</strong> = <strong>100 ml</strong> of prepared formula.
             </p>
           </section>
 
