@@ -17,6 +17,8 @@ export default function SettingsPage() {
     timeFormat: '24h',
   });
   const [saved, setSaved] = useState(false);
+  // Local string values so inputs don't snap back while typing (e.g. clearing "90" to type "120")
+  const [localValues, setLocalValues] = useState<Partial<Record<keyof Settings, string>>>({});
   const [importText, setImportText] = useState("");
   const [importMsg, setImportMsg] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
@@ -34,11 +36,26 @@ export default function SettingsPage() {
     setTimeout(() => setSaved(false), 2000);
   }
 
-  function update(field: keyof Settings, value: string) {
+  // Update local display string while typing; don't commit until valid
+  function handleChange(field: keyof Settings, value: string) {
+    setLocalValues((prev) => ({ ...prev, [field]: value }));
     const num = parseFloat(value);
     if (!isNaN(num) && num > 0) {
       setSettings((prev) => ({ ...prev, [field]: num }));
     }
+  }
+
+  // On blur: if empty/invalid, revert local display to committed setting value
+  function handleBlur(field: keyof Settings) {
+    setLocalValues((prev) => {
+      const updated = { ...prev };
+      delete updated[field];
+      return updated;
+    });
+  }
+
+  function fieldValue(field: keyof Settings): string | number {
+    return field in localValues ? (localValues[field] as string) : (settings[field] as number);
   }
 
   async function handleImport() {
@@ -88,8 +105,9 @@ export default function SettingsPage() {
           <label className="block text-sm text-slate-400 mb-1">Baby weight (kg)</label>
           <input
             type="number"
-            value={settings.weightKg}
-            onChange={(e) => update("weightKg", e.target.value)}
+            value={fieldValue("weightKg")}
+            onChange={(e) => handleChange("weightKg", e.target.value)}
+            onBlur={() => handleBlur("weightKg")}
             step="0.01"
             min="0.5"
             max="30"
@@ -101,8 +119,9 @@ export default function SettingsPage() {
           <label className="block text-sm text-slate-400 mb-1">ml per kg per day</label>
           <input
             type="number"
-            value={settings.mlPerKgPerDay}
-            onChange={(e) => update("mlPerKgPerDay", e.target.value)}
+            value={fieldValue("mlPerKgPerDay")}
+            onChange={(e) => handleChange("mlPerKgPerDay", e.target.value)}
+            onBlur={() => handleBlur("mlPerKgPerDay")}
             step="5"
             min="50"
             max="300"
@@ -114,8 +133,9 @@ export default function SettingsPage() {
           <label className="block text-sm text-slate-400 mb-1">Standard bottle volume (ml)</label>
           <input
             type="number"
-            value={settings.standardBottleVolume}
-            onChange={(e) => update("standardBottleVolume", e.target.value)}
+            value={fieldValue("standardBottleVolume")}
+            onChange={(e) => handleChange("standardBottleVolume", e.target.value)}
+            onBlur={() => handleBlur("standardBottleVolume")}
             step="5"
             min="30"
             max="300"
@@ -127,8 +147,9 @@ export default function SettingsPage() {
           <label className="block text-sm text-slate-400 mb-1">On-track zone (±%)</label>
           <input
             type="number"
-            value={settings.yellowThresholdPct}
-            onChange={(e) => update("yellowThresholdPct", e.target.value)}
+            value={fieldValue("yellowThresholdPct")}
+            onChange={(e) => handleChange("yellowThresholdPct", e.target.value)}
+            onBlur={() => handleBlur("yellowThresholdPct")}
             step="1"
             min="1"
             max="49"
@@ -140,8 +161,9 @@ export default function SettingsPage() {
           <label className="block text-sm text-slate-400 mb-1">Seriously off threshold (±%)</label>
           <input
             type="number"
-            value={settings.redThresholdPct}
-            onChange={(e) => update("redThresholdPct", e.target.value)}
+            value={fieldValue("redThresholdPct")}
+            onChange={(e) => handleChange("redThresholdPct", e.target.value)}
+            onBlur={() => handleBlur("redThresholdPct")}
             step="1"
             min="1"
             max="49"
