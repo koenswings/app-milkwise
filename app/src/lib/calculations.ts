@@ -1,43 +1,67 @@
 import { Feed, Settings, DerivedSettings, FeedWithCredit } from "@/types";
 
-export function deriveSettings(settings: Settings): DerivedSettings {
-  const dailyTargetMl = settings.weightKg * settings.mlPerKgPerDay;
-  const hourlyRate = dailyTargetMl / 24;
-  const idealIntervalHours = settings.standardBottleVolume / hourlyRate;
-  return { dailyTargetMl, hourlyRate, idealIntervalHours };
+/**
+ * Formula preparation conversion factor.
+ * 1 scoop + 30 ml water = ~35 ml prepared formula.
+ * So every ml of water in the bottle yields 35/30 ml of prepared formula.
+ *
+ * The 150 ml/kg/day target refers to PREPARED FORMULA (milk ml).
+ * Logged feed volumes are in WATER ml (what you measure into the bottle).
+ * We must convert before comparing.
+ */
+export const WATER_TO_MILK_RATIO = 35 / 30; // ~1.1667
+
+/** Convert a logged water-volume to prepared-formula volume. */
+export function waterToMilk(waterMl: number): number {
+  return waterMl * WATER_TO_MILK_RATIO;
 }
 
+export function deriveSettings(settings: Settings): DerivedSettings {
+  const dailyTargetMl = settings.weightKg * settings.mlPerKgPerDay; // milk ml
+  const hourlyRate = dailyTargetMl / 24;                             // milk ml/hour
+  const milkPerBottle = waterToMilk(settings.standardBottleVolume);  // milk ml per bottle
+  const idealIntervalHours = milkPerBottle / hourlyRate;
+  return { dailyTargetMl, hourlyRate, idealIntervalHours, milkPerBottle };
+}
+
+/**
+ * Bottle credit — operates in MILK ml.
+ * Pass the milk-converted volume (waterToMilk(f.volume)) and milk hourlyRate.
+ */
 export function bottleCredit(
   ageHours: number,
-  volume: number,
+  milkMl: number,
   hourlyRate: number
 ): number {
   if (ageHours <= 24) {
-    return volume;
+    return milkMl;
   } else {
     const decay = hourlyRate * (ageHours - 24);
-    return Math.max(0, volume - decay);
+    return Math.max(0, milkMl - decay);
   }
 }
 
+/** Returns total in MILK ml so it can be compared against dailyTargetMl. */
 export function strict24hTotal(feeds: Feed[], now: number = Date.now()): number {
   const cutoff = now - 24 * 60 * 60 * 1000;
   return feeds
     .filter((f) => f.timestamp >= cutoff)
-    .reduce((sum, f) => sum + f.volume, 0);
+    .reduce((sum, f) => sum + waterToMilk(f.volume), 0);
 }
 
+/** Returns totalMl in MILK ml; bottles = milkMl / milkPerBottle. */
 export function smoothedEffective(
   feeds: Feed[],
   hourlyRate: number,
   standardBottleVolume: number,
   now: number = Date.now()
 ): { totalMl: number; bottles: number } {
+  const milkPerBottle = waterToMilk(standardBottleVolume);
   const totalMl = feeds.reduce((sum, f) => {
     const ageHours = (now - f.timestamp) / (1000 * 60 * 60);
-    return sum + bottleCredit(ageHours, f.volume, hourlyRate);
+    return sum + bottleCredit(ageHours, waterToMilk(f.volume), hourlyRate);
   }, 0);
-  const bottles = totalMl / standardBottleVolume;
+  const bottles = totalMl / milkPerBottle;
   return { totalMl, bottles };
 }
 
@@ -50,7 +74,7 @@ export function feedsWithCredit(
     .sort((a, b) => b.timestamp - a.timestamp)
     .map((f) => {
       const ageHours = (now - f.timestamp) / (1000 * 60 * 60);
-      const creditMl = bottleCredit(ageHours, f.volume, hourlyRate);
+      const creditMl = bottleCredit(ageHours, waterToMilk(f.volume), hourlyRate);
       return { ...f, ageHours, creditMl };
     });
 }
@@ -101,7 +125,6 @@ export function dailyTotals(
   const now = new Date();
   const result: Array<{ date: string; totalMl: number; count: number; targetMl: number }> = [];
 
-  // Sort all feeds by timestamp ascending for efficient target lookup
   const sortedFeeds = [...feeds].sort((a, b) => a.timestamp - b.timestamp);
 
   for (let d = days - 1; d >= 0; d--) {
@@ -113,7 +136,6 @@ export function dailyTotals(
 
     const dayFeeds = feeds.filter((f) => f.timestamp >= start && f.timestamp < end);
 
-    // Find the most recent feed on or before end of this day that has a stamped target
     const feedsUpToEndOfDay = sortedFeeds.filter(
       (f) => f.timestamp < end && f.targetMlPerDay !== undefined
     );
@@ -122,7 +144,8 @@ export function dailyTotals(
 
     result.push({
       date: dateStr,
-      totalMl: dayFeeds.reduce((sum, f) => sum + f.volume, 0),
+      // Convert water ml → milk ml so daily totals are on the same scale as the target
+      totalMl: dayFeeds.reduce((sum, f) => sum + waterToMilk(f.volume), 0),
       count: dayFeeds.length,
       targetMl,
     });

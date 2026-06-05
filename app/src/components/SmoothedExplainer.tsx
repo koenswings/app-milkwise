@@ -1,7 +1,7 @@
 "use client";
 
 import { Feed } from "@/types";
-import { bottleCredit } from "@/lib/calculations";
+import { bottleCredit, waterToMilk, WATER_TO_MILK_RATIO } from "@/lib/calculations";
 
 interface Props {
   onClose: () => void;
@@ -13,18 +13,19 @@ interface Props {
 }
 
 export default function SmoothedExplainer({ onClose, hourlyRate, standardBottleVolume, dailyTargetMl, feeds, now }: Props) {
-  const targetBottles = (dailyTargetMl / standardBottleVolume).toFixed(1);
+  const milkPerBottle = waterToMilk(standardBottleVolume);
+  const targetBottles = (dailyTargetMl / milkPerBottle).toFixed(1);
 
-  // Build per-bottle breakdown, most recent first, only feeds with any credit
+  // Build per-bottle breakdown — convert water ml → milk ml before crediting
   const sorted = [...feeds].sort((a, b) => b.timestamp - a.timestamp);
   const withCredit = sorted.map((f) => {
     const ageHours = (now - f.timestamp) / (1000 * 60 * 60);
-    const credit = bottleCredit(ageHours, f.volume, hourlyRate);
+    const credit = bottleCredit(ageHours, waterToMilk(f.volume), hourlyRate);
     return { ...f, ageHours, credit };
   });
 
   const totalSmoothedMl = withCredit.reduce((sum, f) => sum + f.credit, 0);
-  const smoothedBottles = totalSmoothedMl / standardBottleVolume;
+  const smoothedBottles = totalSmoothedMl / milkPerBottle;
   const smoothedPct = (totalSmoothedMl / dailyTargetMl) * 100;
 
   // Show last 10 relevant feeds (some credit > 0), then summarise the rest
@@ -52,6 +53,17 @@ export default function SmoothedExplainer({ onClose, hourlyRate, standardBottleV
         </div>
 
         <div className="space-y-5 text-sm text-slate-300 leading-relaxed">
+
+          <section>
+            <h3 className="font-semibold text-slate-100 mb-1">Water ml vs. prepared formula ml</h3>
+            <p>
+              You log bottles in <strong>water ml</strong> (e.g. 90 ml of water). But the 150 ml/kg/day
+              target refers to <strong>prepared formula ml</strong> — after mixing in the powder.
+              Every 30 ml of water yields ~35 ml of formula, so the app multiplies logged volumes
+              by <strong>{WATER_TO_MILK_RATIO.toFixed(4)}</strong> before comparing against your target.
+              A 90 ml bottle = {(90 * WATER_TO_MILK_RATIO).toFixed(0)} ml of prepared formula.
+            </p>
+          </section>
 
           <section>
             <h3 className="font-semibold text-slate-100 mb-1">The core idea</h3>
@@ -156,28 +168,31 @@ export default function SmoothedExplainer({ onClose, hourlyRate, standardBottleV
                 <div className="rounded-lg overflow-hidden border border-slate-700 text-xs">
                   <div className="grid grid-cols-4 bg-slate-700/60 text-slate-400 px-3 py-2 font-medium">
                     <span>Feed time</span>
-                    <span className="text-right">Volume</span>
+                    <span className="text-right">Water ml</span>
                     <span className="text-right">Age</span>
-                    <span className="text-right">Credit</span>
+                    <span className="text-right">Credit (milk)</span>
                   </div>
-                  {withSomeCredit.map((f) => (
-                    <div key={f.id} className="grid grid-cols-4 px-3 py-2 border-t border-slate-700/50 text-slate-300">
-                      <span className="text-slate-400">{fmtTime(f.timestamp)}</span>
-                      <span className="text-right">{f.volume} ml</span>
-                      <span className="text-right">
-                        {f.ageHours < 24
-                          ? <span className="text-green-400">{f.ageHours.toFixed(1)}h</span>
-                          : <span className="text-yellow-400">{f.ageHours.toFixed(1)}h</span>
-                        }
-                      </span>
-                      <span className="text-right font-medium">
-                        {f.credit >= f.volume - 0.1
-                          ? <span className="text-green-400">{f.credit.toFixed(0)} ml ✓</span>
-                          : <span className="text-yellow-400">{f.credit.toFixed(0)} ml</span>
-                        }
-                      </span>
-                    </div>
-                  ))}
+                  {withSomeCredit.map((f) => {
+                    const fullCredit = waterToMilk(f.volume);
+                    return (
+                      <div key={f.id} className="grid grid-cols-4 px-3 py-2 border-t border-slate-700/50 text-slate-300">
+                        <span className="text-slate-400">{fmtTime(f.timestamp)}</span>
+                        <span className="text-right">{f.volume} ml</span>
+                        <span className="text-right">
+                          {f.ageHours < 24
+                            ? <span className="text-green-400">{f.ageHours.toFixed(1)}h</span>
+                            : <span className="text-yellow-400">{f.ageHours.toFixed(1)}h</span>
+                          }
+                        </span>
+                        <span className="text-right font-medium">
+                          {f.credit >= fullCredit - 0.1
+                            ? <span className="text-green-400">{f.credit.toFixed(0)} ml ✓</span>
+                            : <span className="text-yellow-400">{f.credit.toFixed(0)} ml</span>
+                          }
+                        </span>
+                      </div>
+                    );
+                  })}
                   {noCredit.length > 0 && (
                     <div className="px-3 py-2 border-t border-slate-700/50 text-slate-500 italic">
                       + {noCredit.length} older feed{noCredit.length > 1 ? "s" : ""} with no remaining credit (fully faded out)

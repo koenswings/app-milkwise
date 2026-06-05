@@ -15,9 +15,10 @@ export interface Settings {
 }
 
 export interface DerivedSettings {
-  dailyTargetMl: number;
-  hourlyRate: number;
-  idealIntervalHours: number;
+  dailyTargetMl: number;      // prepared formula ml/day (milk ml)
+  hourlyRate: number;         // prepared formula ml/hour (milk ml)
+  idealIntervalHours: number; // hours between feeds
+  milkPerBottle: number;      // prepared formula ml per standardBottleVolume of water
 }
 
 export interface FeedWithCredit extends Feed {

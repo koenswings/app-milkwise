@@ -1,5 +1,7 @@
 "use client";
 
+import { WATER_TO_MILK_RATIO } from "@/lib/calculations";
+
 interface Props {
   onClose: () => void;
 }
@@ -21,6 +23,17 @@ export default function Strict24hExplainer({ onClose }: Props) {
         </div>
 
         <div className="p-5 space-y-5 text-sm text-slate-300 leading-relaxed">
+
+          {/* Water vs milk */}
+          <section>
+            <h3 className="text-slate-100 font-semibold mb-1">Water ml vs. prepared formula ml</h3>
+            <p>
+              You log bottles in <strong>water ml</strong>. But the 150 ml/kg/day target is in
+              <strong> prepared formula ml</strong> (after mixing powder + water).
+              Every 30 ml of water yields ~35 ml of formula ({WATER_TO_MILK_RATIO.toFixed(4)}×).
+              The app converts all logged volumes automatically before comparing against your target.
+            </p>
+          </section>
 
           {/* What it is */}
           <section>

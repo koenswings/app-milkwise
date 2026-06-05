@@ -132,10 +132,10 @@ export default function Dashboard() {
         <div className="flex items-baseline gap-3">
           <span className="text-xl font-semibold text-slate-100">{Math.round(derived.dailyTargetMl)} ml</span>
           <span className="text-slate-400 text-sm">&middot;</span>
-          <span className="text-lg font-semibold text-slate-300">{(derived.dailyTargetMl / settings.standardBottleVolume).toFixed(1)} &times; {settings.standardBottleVolume} ml bottles</span>
+          <span className="text-lg font-semibold text-slate-300">{(derived.dailyTargetMl / derived.milkPerBottle).toFixed(1)} &times; {settings.standardBottleVolume} ml bottles</span>
         </div>
         <div className="text-xs text-slate-500 mt-1">
-          {settings.weightKg} kg &times; {settings.mlPerKgPerDay} ml/kg/day
+          {settings.weightKg} kg &times; {settings.mlPerKgPerDay} ml/kg/day &middot; prepared formula ml
         </div>
       </div>
 
