@@ -26,11 +26,12 @@ services:
     init: true
     restart: unless-stopped
     pull_policy: never
+    ports:
+      - "${port:-3333}:3333"
     volumes:
       - ./data:/app/data
-    network_mode: "host"
     environment:
-      - PORT=${port:-3333}
+      - PORT=3333
       - DATA_DIR=/app/data
       - NODE_ENV=production
       - HOSTNAME=0.0.0.0
