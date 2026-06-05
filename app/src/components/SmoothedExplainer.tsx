@@ -208,16 +208,14 @@ export default function SmoothedExplainer({ onClose, hourlyRate, standardBottleV
 
         </div>
 
-        {/* Kind en Gezin link */}
+        {/* 150ml rule link */}
         <div className="mt-4 pt-4 border-t border-slate-700">
           <p className="text-xs text-slate-400 mb-2">The daily target (ml/kg/day) is based on standard paediatric guidelines:</p>
           <a
-            href="https://www.kindengezin.be/nl/thema/voeding/flesvoeding/hoeveel-flesjes-dag"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-blue-400 hover:text-blue-300 underline text-xs break-all"
+            href="/info/150ml"
+            className="text-blue-400 hover:text-blue-300 underline text-xs"
           >
-            Kind en Gezin — Hoeveel flesjes per dag?
+            De 150 ml/kg/dag richtlijn — achtergrond en wetenschappelijke onderbouwing
           </a>
         </div>
 
