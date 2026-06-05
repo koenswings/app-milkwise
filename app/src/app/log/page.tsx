@@ -11,7 +11,10 @@ const QUICK_VOLUMES = [60, 90, 120];
 
 function nowDateString(): string {
   const d = new Date();
-  return d.toISOString().slice(0, 10);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
 }
 
 function nowTimeString(): string {
@@ -27,6 +30,25 @@ export default function LogPage() {
   const [saving, setSaving] = useState(false);
   const [recentFeeds, setRecentFeeds] = useState<Feed[]>([]);
   const [settings, setSettings] = useState<Settings | null>(null);
+
+  // Track whether user has manually edited date/time
+  const [dateEdited, setDateEdited] = useState(false);
+  const [timeEdited, setTimeEdited] = useState(false);
+
+  // Keep date/time current — refresh every 30s and on focus, but only if not manually edited.
+  // This handles midnight crossover even if the tab stays open all night.
+  useEffect(() => {
+    const refresh = () => {
+      if (!dateEdited) setDate(nowDateString());
+      if (!timeEdited) setTime(nowTimeString());
+    };
+    const interval = setInterval(refresh, 30000);
+    window.addEventListener('focus', refresh);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('focus', refresh);
+    };
+  }, [dateEdited, timeEdited]);
 
   useEffect(() => {
     Promise.all([getFeeds(), getSettings()]).then(([feeds, s]) => {
@@ -100,7 +122,7 @@ export default function LogPage() {
           <input
             type="date"
             value={date}
-            onChange={(e) => setDate(e.target.value)}
+            onChange={(e) => { setDate(e.target.value); setDateEdited(true); }}
             className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-3 text-slate-100 focus:outline-none focus:border-blue-500"
           />
         </div>
@@ -111,7 +133,7 @@ export default function LogPage() {
           <input
             type="time"
             value={time}
-            onChange={(e) => setTime(e.target.value)}
+            onChange={(e) => { setTime(e.target.value); setTimeEdited(true); }}
             className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-3 text-slate-100 focus:outline-none focus:border-blue-500"
           />
         </div>

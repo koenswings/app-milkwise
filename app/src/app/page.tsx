@@ -11,6 +11,7 @@ import {
 import { Feed, Settings, DerivedSettings } from "@/types";
 import StatusBadge from "@/components/StatusBadge";
 import SmoothedExplainer from "@/components/SmoothedExplainer";
+import Strict24hExplainer from "@/components/Strict24hExplainer";
 import BottomNav from "@/components/BottomNav";
 import Link from "next/link";
 import { formatDateTime } from "@/lib/formatTime";
@@ -48,6 +49,7 @@ export default function Dashboard() {
   const [derived, setDerived] = useState<DerivedSettings | null>(null);
   const [now, setNow] = useState(Date.now());
   const [showExplainer, setShowExplainer] = useState(false);
+  const [showStrictExplainer, setShowStrictExplainer] = useState(false);
 
   const load = useCallback(async () => {
     // One-time migration of any existing localStorage data to the server
@@ -90,22 +92,24 @@ export default function Dashboard() {
     );
   }
 
-  const strict24h = strict24hTotal(feeds, now);
+  const lastFeed = feeds.length > 0
+    ? feeds.reduce((a, b) => (a.timestamp > b.timestamp ? a : b))
+    : null;
+
+  // Both Strict and Smoothed frozen at last-feed time — only change when a new feed is logged
+  const smoothedAt = lastFeed ? lastFeed.timestamp : now;
+  const strict24h = strict24hTotal(feeds, smoothedAt);
   const { totalMl: smoothedMl, bottles: smoothedBottles } = smoothedEffective(
     feeds,
     derived.hourlyRate,
     settings.standardBottleVolume,
-    now
+    smoothedAt
   );
 
   const strict24hPct = (strict24h / derived.dailyTargetMl) * 100;
   const smoothedPct = (smoothedMl / derived.dailyTargetMl) * 100;
 
   const nextFeed = nextFeedTime(feeds, derived.idealIntervalHours);
-
-  const lastFeed = feeds.length > 0
-    ? feeds.reduce((a, b) => (a.timestamp > b.timestamp ? a : b))
-    : null;
 
   return (
     <div className="max-w-lg mx-auto px-4 pt-6 pb-24">
@@ -122,18 +126,40 @@ export default function Dashboard() {
         ➕ Log Feed
       </Link>
 
+      {/* Daily target */}
+      <div className="bg-slate-800 rounded-xl p-4 mb-4">
+        <div className="text-sm text-slate-400 mb-1">Daily target</div>
+        <div className="flex items-baseline gap-3">
+          <span className="text-xl font-semibold text-slate-100">{Math.round(derived.dailyTargetMl)} ml</span>
+          <span className="text-slate-400 text-sm">&middot;</span>
+          <span className="text-lg font-semibold text-slate-300">{(derived.dailyTargetMl / settings.standardBottleVolume).toFixed(1)} &times; {settings.standardBottleVolume} ml bottles</span>
+        </div>
+        <div className="text-xs text-slate-500 mt-1">
+          {settings.weightKg} kg &times; {settings.mlPerKgPerDay} ml/kg/day
+        </div>
+      </div>
+
       {/* Status cards */}
       <div className="grid grid-cols-2 gap-3 mb-6">
-        <StatusBadge
-          label="Strict 24h"
-          value={`${Math.round(strict24h)} ml`}
-          percentage={strict24hPct}
-          yellowThresholdPct={settings.yellowThresholdPct}
-          redThresholdPct={settings.redThresholdPct}
-        />
         <div className="relative">
           <StatusBadge
-            label="Smoothed"
+            label="Strict 24h"
+            value={`${Math.round(strict24h)} ml`}
+            percentage={strict24hPct}
+            yellowThresholdPct={settings.yellowThresholdPct}
+            redThresholdPct={settings.redThresholdPct}
+          />
+          <button
+            onClick={() => setShowStrictExplainer(true)}
+            className="absolute top-2 right-2 w-5 h-5 rounded-full bg-slate-600 hover:bg-slate-500 text-slate-300 text-xs font-bold flex items-center justify-center leading-none"
+            aria-label="How is Strict 24h calculated?"
+          >
+            ?
+          </button>
+        </div>
+        <div className="relative">
+          <StatusBadge
+            label="Smoothed 24h"
             value={`${smoothedBottles.toFixed(1)} bottles`}
             percentage={smoothedPct}
             yellowThresholdPct={settings.yellowThresholdPct}
@@ -142,12 +168,16 @@ export default function Dashboard() {
           <button
             onClick={() => setShowExplainer(true)}
             className="absolute top-2 right-2 w-5 h-5 rounded-full bg-slate-600 hover:bg-slate-500 text-slate-300 text-xs font-bold flex items-center justify-center leading-none"
-            aria-label="How is this calculated?"
+            aria-label="How is Smoothed 24h calculated?"
           >
             ?
           </button>
         </div>
       </div>
+
+      {showStrictExplainer && (
+        <Strict24hExplainer onClose={() => setShowStrictExplainer(false)} />
+      )}
 
       {showExplainer && derived && (
         <SmoothedExplainer
@@ -156,41 +186,40 @@ export default function Dashboard() {
           standardBottleVolume={settings.standardBottleVolume}
           dailyTargetMl={derived.dailyTargetMl}
           feeds={feeds}
-          now={now}
+          now={smoothedAt}
         />
       )}
 
-      {/* Next feed */}
-      <div className="bg-slate-800 rounded-xl p-4 mb-4">
-        <div className="text-sm text-slate-400 mb-1">Next suggested feed</div>
-        {nextFeed ? (
-          <>
-            <div className="flex items-baseline gap-2">
-              <span className="text-xl font-semibold text-blue-300">{formatDateTime(nextFeed, settings.timeFormat)}</span>
-            </div>
-            <div className="text-sm text-slate-400 mt-0.5">{formatRelative(nextFeed, now)}</div>
-          </>
-        ) : (
-          <span className="text-slate-400">No feeds logged yet</span>
-        )}
-        <div className="text-xs text-slate-500 mt-1">
-          Ideal interval: {derived.idealIntervalHours.toFixed(1)}h
+      {/* Last feed + Next feed side by side */}
+      <div className="grid grid-cols-2 gap-3 mb-4">
+        {/* Last feed */}
+        <div className="bg-slate-800 rounded-xl p-4">
+          <div className="text-sm text-slate-400 mb-1">Last feed</div>
+          {lastFeed ? (
+            <>
+              <div className="text-lg font-semibold text-slate-200 leading-tight">{formatDateTime(lastFeed.timestamp, settings.timeFormat)}</div>
+              <div className="text-slate-400 text-sm mt-0.5">{lastFeed.volume} ml</div>
+              <div className="text-xs text-slate-500 mt-1">{formatRelative(lastFeed.timestamp, now)}</div>
+            </>
+          ) : (
+            <span className="text-slate-500 text-sm">None yet</span>
+          )}
+        </div>
+
+        {/* Next feed */}
+        <div className="bg-slate-800 rounded-xl p-4">
+          <div className="text-sm text-slate-400 mb-1">Next feed</div>
+          {nextFeed ? (
+            <>
+              <div className="text-lg font-semibold text-blue-300 leading-tight">{formatDateTime(nextFeed, settings.timeFormat)}</div>
+              <div className="text-xs text-slate-400 mt-0.5">{formatRelative(nextFeed, now)}</div>
+              <div className="text-xs text-slate-500 mt-1">every {derived.idealIntervalHours.toFixed(1)}h</div>
+            </>
+          ) : (
+            <span className="text-slate-500 text-sm">No feeds yet</span>
+          )}
         </div>
       </div>
-
-      {/* Last feed */}
-      {lastFeed && (
-        <div className="bg-slate-800 rounded-xl p-4 mb-4">
-          <div className="text-sm text-slate-400 mb-1">Last feed</div>
-          <div className="flex items-baseline gap-2">
-            <span className="text-xl font-semibold text-slate-200">{formatDateTime(lastFeed.timestamp, settings.timeFormat)}</span>
-            <span className="text-slate-400 text-sm">{lastFeed.volume} ml</span>
-          </div>
-          <div className="text-xs text-slate-500 mt-1">
-            {formatRelative(lastFeed.timestamp, now)}
-          </div>
-        </div>
-      )}
 
       {/* Summary row */}
       <div className="grid grid-cols-3 gap-2">

@@ -86,6 +86,13 @@ export function consistencyScore(feeds: Feed[]): number | null {
   return Math.sqrt(variance);
 }
 
+function localDateStr(d: Date = new Date()): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
 export function dailyTotals(
   feeds: Feed[],
   days: number,
@@ -100,8 +107,8 @@ export function dailyTotals(
   for (let d = days - 1; d >= 0; d--) {
     const day = new Date(now);
     day.setDate(day.getDate() - d);
-    const dateStr = day.toISOString().slice(0, 10);
-    const start = new Date(dateStr).getTime();
+    const dateStr = localDateStr(day);
+    const start = new Date(`${dateStr}T00:00:00`).getTime();
     const end = start + 24 * 60 * 60 * 1000;
 
     const dayFeeds = feeds.filter((f) => f.timestamp >= start && f.timestamp < end);

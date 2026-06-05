@@ -43,7 +43,7 @@ export default function SmoothedExplainer({ onClose, hourlyRate, standardBottleV
       onClick={onClose}
     >
       <div
-        className="bg-slate-800 rounded-2xl p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto"
+        className="bg-slate-800 rounded-2xl p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto mt-8 sm:mt-0"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-4">
@@ -206,6 +206,19 @@ export default function SmoothedExplainer({ onClose, hourlyRate, standardBottleV
             </section>
           )}
 
+        </div>
+
+        {/* Kind en Gezin link */}
+        <div className="mt-4 pt-4 border-t border-slate-700">
+          <p className="text-xs text-slate-400 mb-2">The daily target (ml/kg/day) is based on standard paediatric guidelines:</p>
+          <a
+            href="https://www.kindengezin.be/nl/thema/voeding/flesvoeding/hoeveel-flesjes-dag"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-400 hover:text-blue-300 underline text-xs break-all"
+          >
+            Kind en Gezin — Hoeveel flesjes per dag?
+          </a>
         </div>
 
         <button
