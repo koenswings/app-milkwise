@@ -74,7 +74,76 @@ export default function Rule150mlPage() {
           <li>Maximaal ~900–1000 ml/dag na enkele maanden, maar per kg blijft de leidraad.</li>
           <li>Bij twijfel: contacteer Kind en Gezin, huisarts of pediater. Groei is de beste indicator.</li>
         </ul>
+        <p className="text-slate-400 text-xs mt-3">
+          Deze richtlijnen evolueren licht met nieuw onderzoek, maar 150 ml/kg is een robuuste, veilige standaard gebleken.
+          Bronnen zijn overheids- en pediatrische organisaties.
+        </p>
       </div>
+
+      {/* References */}
+      <h2 className="text-slate-100 font-semibold mt-8 mb-3">Bronnen</h2>
+
+      <div className="space-y-5 text-xs">
+        <div>
+          <p className="text-slate-300 font-medium mb-1">België</p>
+          <ul className="space-y-1.5">
+            <li>
+              <span className="text-slate-400">Kind en Gezin — Hoeveel flesvoeding per dag (~150 ml/kg): </span>
+              <a href="https://www.kindengezin.be/nl/thema/voeding/flesvoeding/hoeveel-flesjes-dag" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300 underline break-all">kindengezin.be/…/hoeveel-flesjes-dag</a>
+              <span className="text-slate-500"> · </span>
+              <a href="https://publicaties.vlaanderen.be/view-file/74087" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300 underline">PDF</a>
+            </li>
+            <li>
+              <span className="text-slate-400">Gezondheid.be — 150–180 ml/kg bereik: </span>
+              <a href="https://www.gezondheid.be/artikel/baby/borst-of-fles-hoeveel-voedingen-heeft-je-baby-nodig-per-dag-34161" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300 underline break-all">gezondheid.be/…</a>
+            </li>
+          </ul>
+        </div>
+
+        <div>
+          <p className="text-slate-300 font-medium mb-1">Nederland</p>
+          <ul className="space-y-1.5">
+            <li>
+              <a href="https://www.voedingscentrum.nl/nl/zwanger-en-kind/borstvoeding-en-flesvoeding/flesvoeding-geven/hoeveel-flesvoeding-heeft-mijn-baby-nodig-.aspx" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300 underline break-all">Voedingscentrum.nl — Hoeveel flesvoeding heeft mijn baby nodig?</a>
+            </li>
+            <li>
+              <a href="https://www.jgzrichtlijnen.nl/richtlijn/jgz-richtlijn-voeding-en-eetgedrag/" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300 underline break-all">JGZ-richtlijn Voeding en eetgedrag — circa 150 ml/kg</a>
+            </li>
+          </ul>
+        </div>
+
+        <div>
+          <p className="text-slate-300 font-medium mb-1">Verenigd Koninkrijk (NHS)</p>
+          <ul className="space-y-1.5">
+            <li><a href="https://www.nhs.uk/baby/breastfeeding-and-bottle-feeding/bottle-feeding/formula-milk-questions/" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300 underline break-all">NHS — Formula milk questions (150–200 ml/kg)</a></li>
+            <li><a href="https://derbyshirefamilyhealthservice.nhs.uk/our-services/0-5-years/infant-feeding-and-nutrition/formula-feeding" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300 underline break-all">Derbyshire Family Health Service NHS — Formula feeding</a></li>
+            <li><a href="https://www.unicef.org.uk/babyfriendly/wp-content/uploads/sites/2/2016/12/Parents-guide-to-infant-formula.pdf" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300 underline break-all">UNICEF UK — Parents&apos; guide to infant formula (PDF)</a></li>
+          </ul>
+        </div>
+
+        <div>
+          <p className="text-slate-300 font-medium mb-1">Verenigde Staten (AAP / CDC)</p>
+          <ul className="space-y-1.5">
+            <li><a href="https://www.healthychildren.org/English/ages-stages/baby/formula-feeding/Pages/amount-and-schedule-of-formula-feedings.aspx" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300 underline break-all">HealthyChildren.org (AAP) — Amount and schedule of formula feedings</a></li>
+            <li><a href="https://www.cdc.gov/infant-toddler-nutrition/formula-feeding/how-much-and-how-often.html" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300 underline break-all">CDC — How much and how often to feed infant formula</a></li>
+          </ul>
+        </div>
+
+        <div>
+          <p className="text-slate-300 font-medium mb-1">Internationaal / Wetenschappelijk</p>
+          <ul className="space-y-1.5">
+            <li><a href="https://www.betterhealth.vic.gov.au/health/healthyliving/bottle-feeding-nutrition-and-safety" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300 underline break-all">Better Health Channel (Australië) — Bottle feeding nutrition and safety</a></li>
+            <li><a href="https://www.fao.org/input/download/standards/288/CXS_072e_2015.pdf" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300 underline break-all">FAO/WHO — Codex Standard for Infant Formula (PDF)</a></li>
+            <li><a href="https://www.espghan.org/dam/jcr:092f7f5a-6557-433c-98d6-7259ab1a9cfa/Enteral%20Nutrition%20in%20Preterm%20Infants%202022%20A.204.pdf" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300 underline break-all">ESPGHAN — Enteral Nutrition in Preterm Infants 2022 (PDF)</a></li>
+            <li><a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC11473556/" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300 underline break-all">PubMed Central — Tailored recommendations based on growth and guidelines</a></li>
+          </ul>
+        </div>
+      </div>
+
+      <p className="text-slate-500 text-xs mt-6 pb-4">
+        Richtlijnen kunnen licht variëren per update. Controleer altijd de meest recente versie op de officiële sites.
+        Bij twijfel: raadpleeg Kind en Gezin, huisarts of pediater.
+      </p>
     </div>
   );
 }
