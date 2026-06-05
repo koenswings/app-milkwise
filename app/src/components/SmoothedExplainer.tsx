@@ -230,7 +230,7 @@ export default function SmoothedExplainer({ onClose, hourlyRate, standardBottleV
             href="/info/150ml"
             className="text-blue-400 hover:text-blue-300 underline text-xs"
           >
-            De 150 ml/kg/dag richtlijn — achtergrond en wetenschappelijke onderbouwing
+            The 150 ml/kg/day guideline — background and scientific basis
           </a>
         </div>
 
