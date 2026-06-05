@@ -67,7 +67,7 @@ export default function SmoothedExplainer({ onClose, hourlyRate, standardBottleV
           <section>
             <h3 className="font-semibold text-slate-100 mb-1">Step 1 — score each bottle</h3>
             <p>
-              Every bottle starts with full credit equal to its volume (e.g. {standardBottleVolume} ml).
+              Every bottle starts with full credit equal to its prepared formula volume (e.g. a {standardBottleVolume} ml bottle = <strong>{milkPerBottle.toFixed(0)} ml</strong> of formula).
             </p>
             <p className="mt-2">
               If a bottle was given <strong>less than 24 hours ago</strong>, it keeps its full credit — nothing is subtracted.
@@ -79,18 +79,18 @@ export default function SmoothedExplainer({ onClose, hourlyRate, standardBottleV
               amount from the bottle's credit. Once the credit hits zero, the bottle no longer counts at all.
             </p>
             <div className="bg-slate-700/60 rounded-lg p-3 mt-2 text-slate-400 text-xs">
-              <strong className="text-slate-300">Example:</strong> A {standardBottleVolume} ml bottle given 26 hours ago.<br />
+              <strong className="text-slate-300">Example:</strong> A {standardBottleVolume} ml bottle ({milkPerBottle.toFixed(0)} ml formula) given 26 hours ago.<br />
               Hours beyond 24: 2 hours.<br />
               Credit lost: 2 × {hourlyRate.toFixed(1)} ml = {(2 * hourlyRate).toFixed(0)} ml.<br />
-              Remaining credit: {Math.max(0, standardBottleVolume - 2 * hourlyRate).toFixed(0)} ml.
+              Remaining credit: {Math.max(0, milkPerBottle - 2 * hourlyRate).toFixed(0)} ml.
             </div>
           </section>
 
           <section>
             <h3 className="font-semibold text-slate-100 mb-1">Step 2 — add it all up</h3>
             <p>
-              We add together the credits from every bottle ever logged. The result is a number in ml —
-              the "smoothed total". We then divide by your standard bottle size ({standardBottleVolume} ml)
+              We add together the credits from every bottle ever logged. The result is a number in prepared formula ml —
+              the "smoothed total". We then divide by your standard bottle size ({milkPerBottle.toFixed(0)} ml formula)
               to turn it into a bottle count.
             </p>
           </section>
