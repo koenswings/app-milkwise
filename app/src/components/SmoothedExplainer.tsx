@@ -44,7 +44,7 @@ export default function SmoothedExplainer({ onClose, hourlyRate, standardBottleV
       onClick={onClose}
     >
       <div
-        className="bg-slate-800 rounded-2xl p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto mt-8 sm:mt-0"
+        className="bg-slate-800 rounded-2xl p-6 max-w-lg w-full max-h-[85vh] overflow-y-auto mt-16 sm:mt-4"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-4">
