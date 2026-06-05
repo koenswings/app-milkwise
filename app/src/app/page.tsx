@@ -129,10 +129,12 @@ export default function Dashboard() {
       {/* Daily target */}
       <div className="bg-slate-800 rounded-xl p-4 mb-4">
         <div className="text-sm text-slate-400 mb-1">Daily target</div>
-        <div className="flex items-baseline gap-3">
+        <div className="flex items-baseline gap-3 flex-wrap">
           <span className="text-xl font-semibold text-slate-100">{Math.round(derived.dailyTargetMl)} ml</span>
           <span className="text-slate-400 text-sm">&middot;</span>
           <span className="text-lg font-semibold text-slate-300">{(derived.dailyTargetMl / derived.milkPerBottle).toFixed(1)} &times; {settings.standardBottleVolume} ml bottles</span>
+          <span className="text-slate-400 text-sm">&middot;</span>
+          <span className="text-lg font-semibold text-slate-300">every {(() => { const h = Math.floor(derived.idealIntervalHours); const m = Math.round((derived.idealIntervalHours - h) * 60); return h > 0 ? `${h}h ${m}m` : `${m}m`; })()}</span>
         </div>
         <div className="text-xs text-slate-500 mt-1">
           {settings.weightKg} kg &times; {settings.mlPerKgPerDay} ml/kg/day &middot; prepared formula ml
