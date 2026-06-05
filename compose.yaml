@@ -14,7 +14,7 @@ x-app:
   category: health
   icon: icon.png
   author: Koen Swings
-  version: 1.0.13
+  version: 1.0.14
   instanceName: milkwise
 
 services:
@@ -22,7 +22,7 @@ services:
     build:
       context: ./app
       dockerfile: Dockerfile
-    image: koenswings/milkwise:1.0.13
+    image: koenswings/milkwise:1.0.14
     init: true
     restart: unless-stopped
     pull_policy: never

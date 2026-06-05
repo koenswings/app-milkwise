@@ -52,30 +52,7 @@ export default function SmoothedExplainer({ onClose, hourlyRate, standardBottleV
           <button onClick={onClose} className="text-slate-400 hover:text-slate-200 text-2xl leading-none">×</button>
         </div>
 
-        <div className="space-y-5 text-sm text-slate-300 leading-relaxed">
-
-          <section>
-            <h3 className="font-semibold text-slate-100 mb-1">Water ml vs. prepared formula ml</h3>
-            <p>
-              You log bottles in <strong>water ml</strong> (what you measure into the bottle).
-              But the 150 ml/kg/day target refers to <strong>prepared formula ml</strong> —
-              after mixing in the powder. The conversion ratio is <em>not constant</em>;
-              it varies slightly by bottle size:
-            </p>
-            <div className="mt-2 grid grid-cols-2 gap-x-4 text-xs text-slate-400 font-mono">
-              <span className="text-slate-500">Water ml</span><span className="text-slate-500">Formula ml</span>
-              {FORMULA_TABLE.map(({ water, formula }) => (
-                <>
-                  <span key={`w${water}`}>{water} ml</span>
-                  <span key={`f${water}`}>{formula} ml</span>
-                </>
-              ))}
-            </div>
-            <p className="mt-2">
-              The app interpolates between these values for any bottle size.
-              A <strong>90 ml bottle</strong> = <strong>100 ml</strong> of prepared formula.
-            </p>
-          </section>
+        <div className="space-y-5 text-base text-slate-300 leading-relaxed mt-2">
 
           <section>
             <h3 className="font-semibold text-slate-100 mb-1">The core idea</h3>
@@ -166,6 +143,30 @@ export default function SmoothedExplainer({ onClose, hourlyRate, standardBottleV
             <p className="mt-2">
               The Smoothed version fades out old feeds gradually, so the number moves more smoothly and gives
               a better sense of whether the overall intake trend is on track.
+            </p>
+          </section>
+
+          {/* Water vs formula — placed here so user understands the table below */}
+          <section>
+            <h3 className="font-semibold text-slate-100 mb-1">Water ml vs. prepared formula ml</h3>
+            <p>
+              You log bottles in <strong>water ml</strong> (what you measure into the bottle).
+              But the 150 ml/kg/day target refers to <strong>prepared formula ml</strong> —
+              after mixing in the powder. The conversion ratio is <em>not constant</em>;
+              it varies slightly by bottle size:
+            </p>
+            <div className="mt-2 grid grid-cols-2 gap-x-4 text-sm text-slate-400 font-mono">
+              <span className="text-slate-500">Water ml</span><span className="text-slate-500">Formula ml</span>
+              {FORMULA_TABLE.map(({ water, formula }) => (
+                <>
+                  <span key={`w${water}`}>{water} ml</span>
+                  <span key={`f${water}`}>{formula} ml</span>
+                </>
+              ))}
+            </div>
+            <p className="mt-2">
+              The app interpolates between these values for any bottle size.
+              A <strong>90 ml bottle</strong> = <strong>100 ml</strong> of prepared formula.
             </p>
           </section>
 

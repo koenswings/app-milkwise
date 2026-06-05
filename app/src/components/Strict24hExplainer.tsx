@@ -22,18 +22,7 @@ export default function Strict24hExplainer({ onClose }: Props) {
           </button>
         </div>
 
-        <div className="p-5 space-y-5 text-sm text-slate-300 leading-relaxed">
-
-          {/* Water vs milk */}
-          <section>
-            <h3 className="text-slate-100 font-semibold mb-1">Water ml vs. prepared formula ml</h3>
-            <p>
-              You log bottles in <strong>water ml</strong>. But the 150 ml/kg/day target is in
-              <strong> prepared formula ml</strong> (after mixing powder + water).
-              The conversion ratio varies by bottle size (e.g. 90 ml water → {waterToMilk(90).toFixed(0)} ml formula).
-              The app interpolates from a manufacturer table and converts all logged volumes automatically.
-            </p>
-          </section>
+        <div className="p-5 space-y-5 text-base text-slate-300 leading-relaxed mt-2">
 
           {/* What it is */}
           <section>
@@ -76,6 +65,17 @@ export default function Strict24hExplainer({ onClose }: Props) {
             <div className="bg-slate-800 rounded-lg p-3 font-mono text-xs text-slate-300">
               Strict 24h = Σ volume of all feeds logged in the last 24 hours
             </div>
+          </section>
+
+          {/* Water vs milk — placed after the formula for context */}
+          <section>
+            <h3 className="text-slate-100 font-semibold mb-1">Water ml vs. prepared formula ml</h3>
+            <p>
+              You log bottles in <strong>water ml</strong>. But the 150 ml/kg/day target is in
+              <strong> prepared formula ml</strong> (after mixing powder + water).
+              The conversion ratio varies by bottle size (e.g. 90 ml water → {waterToMilk(90).toFixed(0)} ml formula).
+              The app interpolates from a manufacturer table and converts all logged volumes automatically.
+            </p>
           </section>
 
           {/* External link */}
