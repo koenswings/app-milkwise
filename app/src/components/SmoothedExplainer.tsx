@@ -165,8 +165,8 @@ export default function SmoothedExplainer({ onClose, hourlyRate, standardBottleV
               ))}
             </div>
             <p className="mt-2">
-              The app interpolates between these values for any bottle size.
-              A <strong>90 ml bottle</strong> = <strong>100 ml</strong> of prepared formula.
+              For sizes in the table the value is exact. For anything in between, the app interpolates linearly.
+              E.g. a <strong>105 ml bottle</strong> (between 90 and 120) = <strong>{waterToMilk(105).toFixed(0)} ml</strong> of prepared formula.
             </p>
           </section>
 

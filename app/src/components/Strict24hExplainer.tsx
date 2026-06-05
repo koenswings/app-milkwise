@@ -73,8 +73,8 @@ export default function Strict24hExplainer({ onClose }: Props) {
             <p>
               You log bottles in <strong>water ml</strong>. But the 150 ml/kg/day target is in
               <strong> prepared formula ml</strong> (after mixing powder + water).
-              The conversion ratio varies by bottle size (e.g. 90 ml water → {waterToMilk(90).toFixed(0)} ml formula).
-              The app interpolates from a manufacturer table and converts all logged volumes automatically.
+              The conversion ratio varies by bottle size. Values in the table are exact; anything in between is interpolated (e.g. a 105 ml bottle → {waterToMilk(105).toFixed(0)} ml formula).
+              The app converts all logged volumes automatically.
             </p>
           </section>
 
