@@ -121,13 +121,21 @@ export function feedsWithCredit(
     });
 }
 
+/**
+ * Next feed time is based on the ACTUAL volume of the last feed (converted to
+ * formula ml), not the standard bottle setting. If you gave a 90ml bottle but
+ * changed the setting to 120ml, the next feed is still calculated from what
+ * the baby actually consumed.
+ */
 export function nextFeedTime(
   feeds: Feed[],
-  idealIntervalHours: number
+  hourlyRate: number
 ): number | null {
   if (feeds.length === 0) return null;
   const lastFeed = feeds.reduce((a, b) => (a.timestamp > b.timestamp ? a : b));
-  return lastFeed.timestamp + idealIntervalHours * 60 * 60 * 1000;
+  const lastFeedMilkMl = waterToMilk(lastFeed.volume);
+  const intervalHours = lastFeedMilkMl / hourlyRate;
+  return lastFeed.timestamp + intervalHours * 60 * 60 * 1000;
 }
 
 export function avgIntervalHours(feeds: Feed[]): number | null {

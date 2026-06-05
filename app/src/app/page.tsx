@@ -109,7 +109,7 @@ export default function Dashboard() {
   const strict24hPct = (strict24h / derived.dailyTargetMl) * 100;
   const smoothedPct = (smoothedMl / derived.dailyTargetMl) * 100;
 
-  const nextFeed = nextFeedTime(feeds, derived.idealIntervalHours);
+  const nextFeed = nextFeedTime(feeds, derived.hourlyRate);
 
   return (
     <div className="max-w-lg mx-auto px-4 pt-6 pb-24">
@@ -213,7 +213,9 @@ export default function Dashboard() {
             <>
               <div className="text-lg font-semibold text-blue-300 leading-tight">{formatDateTime(nextFeed, settings.timeFormat)}</div>
               <div className="text-xs text-slate-400 mt-0.5">{formatRelative(nextFeed, now)}</div>
-              <div className="text-xs text-slate-500 mt-1">every {derived.idealIntervalHours.toFixed(1)}h</div>
+              <div className="text-xs text-slate-500 mt-1">
+                {lastFeed ? `based on ${lastFeed.volume} ml bottle` : `ideal: ${derived.idealIntervalHours.toFixed(1)}h`}
+              </div>
             </>
           ) : (
             <span className="text-slate-500 text-sm">No feeds yet</span>
