@@ -135,12 +135,17 @@ export function nextFeedTime(
   hourlyRate: number,
   smoothedTotal: number,
   dailyTargetMl: number,
-  settings: Pick<Settings, 'yellowThresholdPct' | 'recoveryWindowHours' | 'maxFeedGapHours'>
+  settings: Pick<Settings, 'yellowThresholdPct' | 'recoveryWindowHours' | 'maxFeedGapHours' | 'standardBottleVolume'>
 ): NextFeedResult | null {
   if (feeds.length === 0) return null;
 
   const lastFeed = feeds.reduce((a, b) => (a.timestamp > b.timestamp ? a : b));
-  const idealIntervalMs = (waterToMilk(lastFeed.volume) / hourlyRate) * 3_600_000;
+  // Always use standardBottleVolume for the base interval.
+  // A small top-up bottle (e.g. 30ml) must NOT shorten the predicted window —
+  // it just means the baby got a little extra, not that the next full feed is soon.
+  // Option D correction handles the over/underfed timing adjustment on top of this.
+  const standardMilkMl = waterToMilk(settings.standardBottleVolume);
+  const idealIntervalMs = (standardMilkMl / hourlyRate) * 3_600_000;
   const idealNext = lastFeed.timestamp + idealIntervalMs;
   const maxGapNext = lastFeed.timestamp + settings.maxFeedGapHours * 3_600_000;
 
