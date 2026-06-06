@@ -15,8 +15,7 @@ export default function SettingsPage() {
     yellowThresholdPct: 5,
     redThresholdPct: 10,
     timeFormat: '24h',
-    recoveryWindowHours: 24,
-    maxFeedGapHours: 4,
+    maxFeedGapPct: 150,
   });
   const [saved, setSaved] = useState(false);
   // Local string values so inputs don't snap back while typing (e.g. clearing "90" to type "120")
@@ -177,36 +176,19 @@ export default function SettingsPage() {
         </div>
 
         <div className="bg-slate-800 rounded-xl p-4">
-          <label className="block text-sm text-slate-400 mb-1">Recovery window (hours)</label>
+          <label className="block text-sm text-slate-400 mb-1">Max feed gap (%)</label>
           <input
             type="number"
-            value={fieldValue("recoveryWindowHours")}
-            onChange={(e) => handleChange("recoveryWindowHours", e.target.value)}
-            onBlur={() => handleBlur("recoveryWindowHours")}
-            step="1"
-            min="6"
-            max="48"
+            value={fieldValue("maxFeedGapPct")}
+            onChange={(e) => handleChange("maxFeedGapPct", e.target.value)}
+            onBlur={() => handleBlur("maxFeedGapPct")}
+            step="10"
+            min="100"
+            max="300"
             className="w-full bg-slate-700 border border-slate-600 rounded-lg px-4 py-3 text-slate-100 text-lg focus:outline-none focus:border-blue-500"
           />
           <p className="text-xs text-slate-500 mt-2">
-            When over or underfed, spread the correction across this many hours. Default: 24h.
-          </p>
-        </div>
-
-        <div className="bg-slate-800 rounded-xl p-4">
-          <label className="block text-sm text-slate-400 mb-1">Max gap between feeds (hours)</label>
-          <input
-            type="number"
-            value={fieldValue("maxFeedGapHours")}
-            onChange={(e) => handleChange("maxFeedGapHours", e.target.value)}
-            onBlur={() => handleBlur("maxFeedGapHours")}
-            step="0.5"
-            min="2"
-            max="6"
-            className="w-full bg-slate-700 border border-slate-600 rounded-lg px-4 py-3 text-slate-100 text-lg focus:outline-none focus:border-blue-500"
-          />
-          <p className="text-xs text-slate-500 mt-2">
-            Never suggest a gap longer than this, even when overfed. Default: 4h.
+            Safety cap: max gap = this % of the ideal interval. 150% of 3h20m = 5h. Default: 150.
           </p>
         </div>
 

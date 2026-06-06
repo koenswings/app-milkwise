@@ -109,7 +109,7 @@ export default function Dashboard() {
   const strict24hPct = (strict24h / derived.dailyTargetMl) * 100;
   const smoothedPct = (smoothedMl / derived.dailyTargetMl) * 100;
 
-  const nextFeedResult = nextFeedTime(feeds, derived.hourlyRate, smoothedMl, derived.dailyTargetMl, settings);
+  const nextFeedResult = nextFeedTime(feeds, derived.hourlyRate, settings);
   const nextFeed = nextFeedResult?.timestamp ?? null;
 
   return (
@@ -182,11 +182,9 @@ export default function Dashboard() {
             <>
               <div className="text-lg font-semibold text-blue-300 leading-tight">{formatDateTime(nextFeed, settings.timeFormat)}</div>
               <div className="text-xs text-slate-400 mt-0.5">{formatRelative(nextFeed, now)}</div>
-              {nextFeedResult && nextFeedResult.correctionMinutes !== 0 && (
-                <div className={`text-xs mt-1 font-medium ${nextFeedResult.correctionMinutes > 0 ? 'text-yellow-400' : 'text-blue-400'}`}>
-                  {nextFeedResult.correctionMinutes > 0
-                    ? `⬆ delayed ${nextFeedResult.correctionMinutes}m · recovery`
-                    : `⬇ earlier ${Math.abs(nextFeedResult.correctionMinutes)}m · recovery`}
+              {nextFeedResult?.capped && (
+                <div className="text-xs mt-1 font-medium text-yellow-400">
+                  ⚠️ max gap cap applied
                 </div>
               )}
 

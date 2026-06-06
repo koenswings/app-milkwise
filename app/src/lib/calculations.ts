@@ -122,52 +122,44 @@ export function feedsWithCredit(
 }
 
 /**
- * Option D recovery-aware next feed predictor.
+ * Model E — Running Balance next feed predictor.
  *
- * - Uses actual last bottle volume (not setting) for the ideal interval.
- * - Outside the green zone: applies a gradual correction spread over
- *   recoveryWindowHours, capped at ±1h.
- * - Always caps at maxFeedGapHours.
- * - Returns timestamp + correction info for display.
+ * The baby has one energy pool. Each bottle tops it up; it drains continuously
+ * at hourlyRate between feeds. The next feed is when the pool hits zero.
+ * Recovery is built-in: an overfed day has a larger pool → later next feed →
+ * giving one standard bottle at that time returns the baby to normal rhythm.
+ *
+ * maxGap is expressed as a % of the ideal interval so it scales with bottle size.
  */
 export function nextFeedTime(
   feeds: Feed[],
   hourlyRate: number,
-  smoothedTotal: number,
-  dailyTargetMl: number,
-  settings: Pick<Settings, 'yellowThresholdPct' | 'recoveryWindowHours' | 'maxFeedGapHours' | 'standardBottleVolume'>
+  settings: Pick<Settings, 'standardBottleVolume' | 'maxFeedGapPct'>
 ): NextFeedResult | null {
   if (feeds.length === 0) return null;
 
-  const lastFeed = feeds.reduce((a, b) => (a.timestamp > b.timestamp ? a : b));
-  // Always use standardBottleVolume for the base interval.
-  // A small top-up bottle (e.g. 30ml) must NOT shorten the predicted window —
-  // it just means the baby got a little extra, not that the next full feed is soon.
-  // Option D correction handles the over/underfed timing adjustment on top of this.
-  const standardMilkMl = waterToMilk(settings.standardBottleVolume);
-  const idealIntervalMs = (standardMilkMl / hourlyRate) * 3_600_000;
-  const idealNext = lastFeed.timestamp + idealIntervalMs;
-  const maxGapNext = lastFeed.timestamp + settings.maxFeedGapHours * 3_600_000;
+  const sorted = [...feeds].sort((a, b) => a.timestamp - b.timestamp);
+  const milkPerBottle = waterToMilk(settings.standardBottleVolume);
+  const idealIntervalMs = (milkPerBottle / hourlyRate) * 3_600_000;
+  const maxGapMs = idealIntervalMs * (settings.maxFeedGapPct / 100);
 
-  const pct = (smoothedTotal / dailyTargetMl) * 100;
-  const inGreenZone = Math.abs(pct - 100) <= settings.yellowThresholdPct;
+  // Walk feeds oldest → newest, maintaining running balance
+  let balance = 0;
+  let prevTs = sorted[0].timestamp;
 
-  if (inGreenZone) {
-    return { timestamp: Math.min(idealNext, maxGapNext), correctionMinutes: 0, inGreenZone: true };
+  for (const feed of sorted) {
+    const gapHours = (feed.timestamp - prevTs) / 3_600_000;
+    balance = Math.max(0, balance - hourlyRate * gapHours) + waterToMilk(feed.volume);
+    prevTs = feed.timestamp;
   }
 
-  // Recovery correction
-  const surplusMl = smoothedTotal - dailyTargetMl; // positive = overfed
-  const idealIntervalHours = idealIntervalMs / 3_600_000;
-  const feedsInWindow = settings.recoveryWindowHours / idealIntervalHours;
-  const correctionPerFeed = surplusMl / feedsInWindow;
-  const rawCorrectionMs = (correctionPerFeed / hourlyRate) * 3_600_000;
-  const correctionMs = Math.max(-3_600_000, Math.min(3_600_000, rawCorrectionMs)); // ±1h cap
+  const lastFeed = sorted[sorted.length - 1];
+  const rawNext = lastFeed.timestamp + (balance / hourlyRate) * 3_600_000;
+  const maxGapNext = lastFeed.timestamp + maxGapMs;
+  const timestamp = Math.min(rawNext, maxGapNext);
+  const capped = timestamp < rawNext;
 
-  const correctedNext = Math.min(idealNext + correctionMs, maxGapNext);
-  const correctionMinutes = Math.round((correctedNext - idealNext) / 60_000);
-
-  return { timestamp: correctedNext, correctionMinutes, inGreenZone: false };
+  return { timestamp, balanceMl: Math.round(balance), capped };
 }
 
 export function avgIntervalHours(feeds: Feed[]): number | null {

@@ -12,14 +12,13 @@ export interface Settings {
   yellowThresholdPct: number;     // default 5 — within this % of target = on track
   redThresholdPct: number;        // default 10 — beyond this % of target = seriously off
   timeFormat: '24h' | '12h';     // default '24h'
-  recoveryWindowHours: number;    // default 24 — window over which to spread correction
-  maxFeedGapHours: number;        // default 4 — never suggest longer than this between feeds
+  maxFeedGapPct: number;          // default 150 — max gap = this % of ideal interval (150% of 3h20 = 5h)
 }
 
 export interface NextFeedResult {
   timestamp: number;              // suggested next feed time (ms)
-  correctionMinutes: number;      // positive = delayed, negative = earlier, 0 = on track
-  inGreenZone: boolean;           // whether correction is active
+  balanceMl: number;              // current energy pool in ml formula
+  capped: boolean;                // true if maxGap kicked in
 }
 
 export interface DerivedSettings {

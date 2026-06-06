@@ -16,8 +16,7 @@ const DEFAULT_SETTINGS: Settings = {
   yellowThresholdPct: 5,
   redThresholdPct: 10,
   timeFormat: '24h' as const,
-  recoveryWindowHours: 24,
-  maxFeedGapHours: 4,
+  maxFeedGapPct: 150,
 };
 
 function ensureDir() {
