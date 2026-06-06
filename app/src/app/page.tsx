@@ -162,7 +162,7 @@ export default function Dashboard() {
         <div className="relative">
           <StatusBadge
             label="Smoothed 24h"
-            value={`${smoothedBottles.toFixed(1)} bottles`}
+            value={`${Math.round(smoothedMl)} ml`}
             percentage={smoothedPct}
             yellowThresholdPct={settings.yellowThresholdPct}
             redThresholdPct={settings.redThresholdPct}
