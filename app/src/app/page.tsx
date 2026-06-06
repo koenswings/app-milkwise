@@ -9,9 +9,10 @@ import {
   nextFeedTime,
 } from "@/lib/calculations";
 import { Feed, Settings, DerivedSettings } from "@/types";
-import StatusBadge from "@/components/StatusBadge";
-import SmoothedExplainer from "@/components/SmoothedExplainer";
 import Strict24hExplainer from "@/components/Strict24hExplainer";
+import DailyTargetCard from "@/components/cards/DailyTargetCard";
+import StrictCard from "@/components/cards/StrictCard";
+import SmoothedCard from "@/components/cards/SmoothedCard";
 import BottomNav from "@/components/BottomNav";
 import Link from "next/link";
 import { formatDateTime } from "@/lib/formatTime";
@@ -48,7 +49,6 @@ export default function Dashboard() {
   const [settings, setSettings] = useState<Settings | null>(null);
   const [derived, setDerived] = useState<DerivedSettings | null>(null);
   const [now, setNow] = useState(Date.now());
-  const [showExplainer, setShowExplainer] = useState(false);
   const [showStrictExplainer, setShowStrictExplainer] = useState(false);
 
   const load = useCallback(async () => {
@@ -127,68 +127,36 @@ export default function Dashboard() {
         ➕ Log Feed
       </Link>
 
-      {/* Daily target */}
-      <div className="bg-slate-800 rounded-xl p-4 mb-4">
-        <div className="text-sm text-slate-400 mb-1">Daily target</div>
-        <div className="flex items-baseline gap-3 flex-wrap">
-          <span className="text-xl font-semibold text-slate-100">{Math.round(derived.dailyTargetMl)} ml</span>
-          <span className="text-slate-400 text-sm">&middot;</span>
-          <span className="text-lg font-semibold text-slate-300">{settings.standardBottleVolume} ml bottle every {(() => { const h = Math.floor(derived.idealIntervalHours); const m = Math.round((derived.idealIntervalHours - h) * 60); return h > 0 ? `${h}h ${m}m` : `${m}m`; })()}</span>
-        </div>
-        <div className="text-xs text-slate-500 mt-1">
-          {settings.weightKg} kg &times; {settings.mlPerKgPerDay} ml/kg/day &middot; prepared formula ml
-        </div>
-      </div>
+      {/* Daily target — swipeable */}
+      <DailyTargetCard settings={settings} derived={derived} />
 
-      {/* Status cards */}
+      {/* Status cards — swipeable */}
       <div className="grid grid-cols-2 gap-3 mb-6">
-        <div className="relative">
-          <StatusBadge
-            label="Strict 24h"
-            value={`${Math.round(strict24h)} ml`}
-            percentage={strict24hPct}
-            yellowThresholdPct={settings.yellowThresholdPct}
-            redThresholdPct={settings.redThresholdPct}
-          />
-          <button
-            onClick={() => setShowStrictExplainer(true)}
-            className="absolute top-2 right-2 w-5 h-5 rounded-full bg-slate-600 hover:bg-slate-500 text-slate-300 text-xs font-bold flex items-center justify-center leading-none"
-            aria-label="How is Strict 24h calculated?"
-          >
-            ?
-          </button>
-        </div>
-        <div className="relative">
-          <StatusBadge
-            label="Smoothed 24h"
-            value={`${Math.round(smoothedMl)} ml`}
-            percentage={smoothedPct}
-            yellowThresholdPct={settings.yellowThresholdPct}
-            redThresholdPct={settings.redThresholdPct}
-          />
-          <button
-            onClick={() => setShowExplainer(true)}
-            className="absolute top-2 right-2 w-5 h-5 rounded-full bg-slate-600 hover:bg-slate-500 text-slate-300 text-xs font-bold flex items-center justify-center leading-none"
-            aria-label="How is Smoothed 24h calculated?"
-          >
-            ?
-          </button>
-        </div>
+        <StrictCard
+          strict24h={strict24h}
+          pct={strict24hPct}
+          dailyTargetMl={derived.dailyTargetMl}
+          standardBottleVolume={settings.standardBottleVolume}
+          yellowThresholdPct={settings.yellowThresholdPct}
+          redThresholdPct={settings.redThresholdPct}
+          onExplain={() => setShowStrictExplainer(true)}
+        />
+        <SmoothedCard
+          smoothedMl={smoothedMl}
+          smoothedBottles={smoothedBottles}
+          pct={smoothedPct}
+          dailyTargetMl={derived.dailyTargetMl}
+          standardBottleVolume={settings.standardBottleVolume}
+          hourlyRate={derived.hourlyRate}
+          yellowThresholdPct={settings.yellowThresholdPct}
+          redThresholdPct={settings.redThresholdPct}
+          feeds={feeds}
+          now={smoothedAt}
+        />
       </div>
 
       {showStrictExplainer && (
         <Strict24hExplainer onClose={() => setShowStrictExplainer(false)} />
-      )}
-
-      {showExplainer && derived && (
-        <SmoothedExplainer
-          onClose={() => setShowExplainer(false)}
-          hourlyRate={derived.hourlyRate}
-          standardBottleVolume={settings.standardBottleVolume}
-          dailyTargetMl={derived.dailyTargetMl}
-          feeds={feeds}
-          now={smoothedAt}
-        />
       )}
 
       {/* Last feed + Next feed side by side */}
