@@ -1,4 +1,4 @@
-import { Feed, Settings, DerivedSettings, FeedWithCredit } from "@/types";
+import { Feed, Settings, DerivedSettings, FeedWithCredit, NextFeedResult } from "@/types";
 
 /**
  * Water → prepared formula conversion.
@@ -122,20 +122,47 @@ export function feedsWithCredit(
 }
 
 /**
- * Next feed time is based on the ACTUAL volume of the last feed (converted to
- * formula ml), not the standard bottle setting. If you gave a 90ml bottle but
- * changed the setting to 120ml, the next feed is still calculated from what
- * the baby actually consumed.
+ * Option D recovery-aware next feed predictor.
+ *
+ * - Uses actual last bottle volume (not setting) for the ideal interval.
+ * - Outside the green zone: applies a gradual correction spread over
+ *   recoveryWindowHours, capped at ±1h.
+ * - Always caps at maxFeedGapHours.
+ * - Returns timestamp + correction info for display.
  */
 export function nextFeedTime(
   feeds: Feed[],
-  hourlyRate: number
-): number | null {
+  hourlyRate: number,
+  smoothedTotal: number,
+  dailyTargetMl: number,
+  settings: Pick<Settings, 'yellowThresholdPct' | 'recoveryWindowHours' | 'maxFeedGapHours'>
+): NextFeedResult | null {
   if (feeds.length === 0) return null;
+
   const lastFeed = feeds.reduce((a, b) => (a.timestamp > b.timestamp ? a : b));
-  const lastFeedMilkMl = waterToMilk(lastFeed.volume);
-  const intervalHours = lastFeedMilkMl / hourlyRate;
-  return lastFeed.timestamp + intervalHours * 60 * 60 * 1000;
+  const idealIntervalMs = (waterToMilk(lastFeed.volume) / hourlyRate) * 3_600_000;
+  const idealNext = lastFeed.timestamp + idealIntervalMs;
+  const maxGapNext = lastFeed.timestamp + settings.maxFeedGapHours * 3_600_000;
+
+  const pct = (smoothedTotal / dailyTargetMl) * 100;
+  const inGreenZone = Math.abs(pct - 100) <= settings.yellowThresholdPct;
+
+  if (inGreenZone) {
+    return { timestamp: Math.min(idealNext, maxGapNext), correctionMinutes: 0, inGreenZone: true };
+  }
+
+  // Recovery correction
+  const surplusMl = smoothedTotal - dailyTargetMl; // positive = overfed
+  const idealIntervalHours = idealIntervalMs / 3_600_000;
+  const feedsInWindow = settings.recoveryWindowHours / idealIntervalHours;
+  const correctionPerFeed = surplusMl / feedsInWindow;
+  const rawCorrectionMs = (correctionPerFeed / hourlyRate) * 3_600_000;
+  const correctionMs = Math.max(-3_600_000, Math.min(3_600_000, rawCorrectionMs)); // ±1h cap
+
+  const correctedNext = Math.min(idealNext + correctionMs, maxGapNext);
+  const correctionMinutes = Math.round((correctedNext - idealNext) / 60_000);
+
+  return { timestamp: correctedNext, correctionMinutes, inGreenZone: false };
 }
 
 export function avgIntervalHours(feeds: Feed[]): number | null {

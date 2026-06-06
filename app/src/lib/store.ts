@@ -53,10 +53,14 @@ export async function deleteFeed(id: string): Promise<Feed[]> {
   return updated;
 }
 
+const DEFAULT_SETTINGS = { weightKg: 6.27, mlPerKgPerDay: 150, standardBottleVolume: 90, yellowThresholdPct: 5, redThresholdPct: 10, timeFormat: '24h' as const, recoveryWindowHours: 24, maxFeedGapHours: 4 };
+
 export async function getSettings(): Promise<Settings> {
   const res = await fetch("/api/settings", { cache: "no-store" });
-  if (!res.ok) return { weightKg: 6.27, mlPerKgPerDay: 150, standardBottleVolume: 90, yellowThresholdPct: 5, redThresholdPct: 10, timeFormat: '24h' };
-  return res.json();
+  if (!res.ok) return DEFAULT_SETTINGS;
+  const saved = await res.json();
+  // Merge defaults so existing saved settings get new fields
+  return { ...DEFAULT_SETTINGS, ...saved };
 }
 
 export async function saveSettings(settings: Settings): Promise<void> {
