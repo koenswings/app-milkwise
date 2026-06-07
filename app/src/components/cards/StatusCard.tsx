@@ -2,6 +2,7 @@
 
 import SwipeableCard from "@/components/SwipeableCard";
 import { waterToMilk } from "@/lib/calculations";
+import { Feed } from "@/types";
 
 interface Props {
   strict24h: number;
@@ -14,6 +15,8 @@ interface Props {
   redThresholdPct: number;
   onStrictExplain: () => void;
   onSmoothedExplain: () => void;
+  feeds: Feed[];
+  now: number;
 }
 
 function colorClass(pct: number, y: number, r: number) {
@@ -35,16 +38,17 @@ function statusText(pct: number, y: number, r: number) {
   return d <= r ? "slightly behind" : "behind ⚠️";
 }
 
-function Panel({ label, ml, pct, dailyTargetMl, milkPerBottle, y, r, onExplain }:
-  { label: string; ml: number; pct: number; dailyTargetMl: number; milkPerBottle: number; y: number; r: number; onExplain: () => void }) {
+function Panel({ label, ml, pct, milkPerBottle, y, r, onExplain, feeds24h }:
+  { label: string; ml: number; pct: number; milkPerBottle: number; y: number; r: number; onExplain: () => void; feeds24h: Feed[] }) {
 
   const bottles = ml / milkPerBottle;
-  const targetBottles = dailyTargetMl / milkPerBottle;
-  const cols = 4;
-  const totalSlots = Math.min(Math.ceil(targetBottles), 12);
-  const fullSlots = Math.min(Math.floor(bottles), totalSlots);
-  const partial = bottles - Math.floor(bottles);
-  const hasPartial = partial > 0.1 && fullSlots < totalSlots;
+
+  // Build actual feed pictograms from real 24h feeds
+  // Each feed shown as an emoji sized relative to milkPerBottle
+  const feedEmojis = feeds24h.map(f => ({
+    vol: f.volume,
+    size: waterToMilk(f.volume) / milkPerBottle, // fraction of a standard bottle
+  }));
 
   return (
     <div className={`rounded-xl border p-3 ${bgBorder(pct, y, r)}`}>
@@ -54,35 +58,24 @@ function Panel({ label, ml, pct, dailyTargetMl, milkPerBottle, y, r, onExplain }
         <button onClick={onExplain} className="w-4 h-4 rounded-full bg-slate-600 hover:bg-slate-500 text-slate-300 text-xs font-bold flex items-center justify-center leading-none">?</button>
       </div>
 
-      {/* Two-column layout: numbers left, bottle matrix + count right */}
-      <div className="flex items-start justify-between gap-3">
-        {/* Left: ml + bottle count on same line, status below */}
-        <div className="flex-1">
-          <div className="flex items-baseline justify-between">
-            <span className={`text-3xl font-bold leading-none tabular-nums ${colorClass(pct, y, r)}`}>{Math.round(ml)}<span className="text-base font-normal ml-0.5">ml</span></span>
-            <span className={`text-3xl font-bold leading-none tabular-nums ${colorClass(pct, y, r)}`}>{bottles.toFixed(1)}<span className="text-base font-normal text-slate-500 ml-0.5">🍼</span></span>
+      {/* Numbers: ml left, bottles right, same font */}
+      <div className="flex items-baseline justify-between mb-1">
+        <span className={`text-3xl font-bold leading-none tabular-nums ${colorClass(pct, y, r)}`}>{Math.round(ml)}<span className="text-base font-normal ml-0.5">ml</span></span>
+        <span className={`text-3xl font-bold leading-none tabular-nums ${colorClass(pct, y, r)}`}>{bottles.toFixed(1)}<span className="text-base font-normal ml-0.5">bottles</span></span>
+      </div>
+      <div className={`text-sm mb-2 ${colorClass(pct, y, r)}`}>{Math.round(pct)}% · {statusText(pct, y, r)}</div>
+
+      {/* Actual feed pictograms: real bottles from last 24h */}
+      <div className="flex flex-wrap gap-1 mt-1">
+        {feedEmojis.map((f, i) => (
+          <div key={i} className="flex flex-col items-center">
+            <span
+              className="leading-none"
+              style={{ fontSize: `${Math.max(0.8, Math.min(1.5, f.size + 0.3))}rem`, opacity: 0.7 + f.size * 0.3 }}
+            >🍼</span>
+            <span className="text-xs text-slate-500 tabular-nums">{f.vol}</span>
           </div>
-          <div className={`text-sm mt-1 ${colorClass(pct, y, r)}`}>{Math.round(pct)}% · {statusText(pct, y, r)}</div>
-        </div>
-        {/* Right: bottle matrix */}
-        <div className="flex-shrink-0">
-          <div
-            className="grid gap-0.5"
-            style={{ gridTemplateColumns: `repeat(${cols}, 1.5rem)` }}
-          >
-            {Array.from({ length: totalSlots }).map((_, i) => {
-              const isFull = i < fullSlots;
-              const isPartial = hasPartial && i === fullSlots;
-              return (
-                <span
-                  key={i}
-                  className="text-xl leading-none text-center"
-                  style={{ opacity: isFull ? 1 : isPartial ? 0.2 + partial * 0.8 : 0.12 }}
-                >🍼</span>
-              );
-            })}
-          </div>
-        </div>
+        ))}
       </div>
     </div>
   );
@@ -145,19 +138,22 @@ function SpotlightView({ smoothedMl, smoothedPct, strict24h, strictPct, yellowTh
 }
 
 export default function StatusCard(props: Props) {
-  const { strict24h, strictPct, smoothedMl, smoothedPct, dailyTargetMl, standardBottleVolume, yellowThresholdPct: y, redThresholdPct: r } = props;
+  const { strict24h, strictPct, smoothedMl, smoothedPct, standardBottleVolume, yellowThresholdPct: y, redThresholdPct: r } = props;
   const milkPerBottle = waterToMilk(standardBottleVolume);
+  const cutoff24h = props.now - 24 * 3_600_000;
+  const feeds24h = props.feeds.filter(f => f.timestamp >= cutoff24h)
+    .sort((a, b) => a.timestamp - b.timestamp);
 
   return (
     <SwipeableCard
       className="mb-2"
       views={[
-        <Panel key="smoothed" label="Smoothed 24h" ml={smoothedMl} pct={smoothedPct}
-          dailyTargetMl={dailyTargetMl} milkPerBottle={milkPerBottle} y={y} r={r}
-          onExplain={props.onSmoothedExplain} />,
+        <Panel key="smoothed" label="STATUS LAST 24H" ml={smoothedMl} pct={smoothedPct}
+          milkPerBottle={milkPerBottle} y={y} r={r}
+          onExplain={props.onSmoothedExplain} feeds24h={feeds24h} />,
         <Panel key="strict" label="Strict 24h" ml={strict24h} pct={strictPct}
-          dailyTargetMl={dailyTargetMl} milkPerBottle={milkPerBottle} y={y} r={r}
-          onExplain={props.onStrictExplain} />,
+          milkPerBottle={milkPerBottle} y={y} r={r}
+          onExplain={props.onStrictExplain} feeds24h={feeds24h} />,
         <ProgressView key="progress" {...props} />,
         <SpotlightView key="spotlight" {...props} />,
       ]}

@@ -53,7 +53,7 @@ export default function Dashboard() {
   const [now, setNow] = useState(Date.now());
   const [showStrictExplainer, setShowStrictExplainer] = useState(false);
   const [showSmoothedExplainer, setShowSmoothedExplainer] = useState(false);
-  const [nextBottleSize, setNextBottleSize] = useState<number | null>(null);
+  const [nextBottleSize, setNextBottleSize] = useState<number>(90); // default 90ml, never null
 
   const load = useCallback(async () => {
     // One-time migration of any existing localStorage data to the server
@@ -113,7 +113,7 @@ export default function Dashboard() {
   const strict24hPct = (strict24h / derived.dailyTargetMl) * 100;
   const smoothedPct = (smoothedMl / derived.dailyTargetMl) * 100;
 
-  const effectiveBottleSize = nextBottleSize ?? settings.standardBottleVolume;
+  const effectiveBottleSize = nextBottleSize;
   const nextFeedResult = nextFeedTime(feeds, derived.hourlyRate, settings);
   const nextFeed = nextFeedResult?.timestamp ?? null;
   // Standard next = lastFeed + interval for selected bottle
@@ -141,9 +141,9 @@ export default function Dashboard() {
         {[60, 90, 120].map((size) => (
           <button
             key={size}
-            onClick={() => setNextBottleSize(nextBottleSize === size ? null : size)}
+            onClick={() => setNextBottleSize(size)}
             className={`px-3 py-1 rounded-lg text-sm font-semibold transition-colors ${
-              effectiveBottleSize === size && nextBottleSize !== null
+              effectiveBottleSize === size
                 ? 'bg-blue-600 text-white'
                 : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
             }`}
@@ -168,6 +168,8 @@ export default function Dashboard() {
         redThresholdPct={settings.redThresholdPct}
         onStrictExplain={() => setShowStrictExplainer(true)}
         onSmoothedExplain={() => setShowSmoothedExplainer(true)}
+        feeds={feeds}
+        now={now}
       />
 
       {showStrictExplainer && (
