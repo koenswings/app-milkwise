@@ -40,46 +40,44 @@ function Panel({ label, ml, pct, dailyTargetMl, milkPerBottle, y, r, onExplain }
 
   const bottles = ml / milkPerBottle;
   const targetBottles = dailyTargetMl / milkPerBottle;
-  const full = Math.floor(bottles);
-  const partial = bottles - full;
-  const totalSlots = Math.min(Math.ceil(targetBottles), 10);
-  const emptySlots = Math.max(0, totalSlots - Math.ceil(bottles));
+  const cols = 4;
+  const totalSlots = Math.min(Math.ceil(targetBottles), 12);
+  const fullSlots = Math.min(Math.floor(bottles), totalSlots);
+  const partial = bottles - Math.floor(bottles);
+  const hasPartial = partial > 0.1 && fullSlots < totalSlots;
 
   return (
     <div className={`rounded-xl border p-3 ${bgBorder(pct, y, r)}`}>
       {/* Header */}
       <div className="flex items-center justify-between mb-2">
         <span className="text-xs text-slate-400 uppercase tracking-wide">{label}</span>
-        <button
-          onClick={onExplain}
-          className="w-4 h-4 rounded-full bg-slate-600 hover:bg-slate-500 text-slate-300 text-xs font-bold flex items-center justify-center leading-none"
-        >?</button>
+        <button onClick={onExplain} className="w-4 h-4 rounded-full bg-slate-600 hover:bg-slate-500 text-slate-300 text-xs font-bold flex items-center justify-center leading-none">?</button>
       </div>
 
-      {/* Main value */}
-      <div className={`text-3xl font-bold leading-none ${colorClass(pct, y, r)}`}>
-        {Math.round(ml)} ml
-      </div>
-      <div className={`text-sm mt-0.5 ${colorClass(pct, y, r)}`}>
-        {Math.round(pct)}% &middot; {statusText(pct, y, r)}
-      </div>
-
-      {/* Bottles row: pictograms left, count right */}
-      <div className="flex items-end justify-between mt-2">
-        <div className="flex flex-wrap gap-0.5">
-          {Array.from({ length: Math.min(full, totalSlots) }).map((_, i) => (
-            <span key={i} className="text-xl leading-none">🍼</span>
-          ))}
-          {partial > 0.1 && full < totalSlots && (
-            <span className="text-xl leading-none" style={{ opacity: 0.2 + partial * 0.8 }}>🍼</span>
-          )}
-          {Array.from({ length: emptySlots }).map((_, i) => (
-            <span key={i} className="text-xl leading-none opacity-15">🍼</span>
-          ))}
+      {/* Two-column layout: numbers left, bottle matrix right */}
+      <div className="flex items-start justify-between gap-3">
+        {/* Left: numbers */}
+        <div className="flex-1">
+          <div className={`text-3xl font-bold leading-none tabular-nums ${colorClass(pct, y, r)}`}>{Math.round(ml)}<span className="text-base font-normal ml-0.5">ml</span></div>
+          <div className={`text-xl font-bold leading-none tabular-nums mt-1 ${colorClass(pct, y, r)}`}>{bottles.toFixed(1)}<span className="text-xs font-normal text-slate-500 ml-0.5">🍼</span></div>
+          <div className={`text-sm mt-1 ${colorClass(pct, y, r)}`}>{Math.round(pct)}% · {statusText(pct, y, r)}</div>
         </div>
-        <div className={`text-2xl font-bold leading-none ml-2 ${colorClass(pct, y, r)}`}>
-          {bottles.toFixed(1)}
-          <span className="text-base font-normal text-slate-500 ml-0.5">🍼</span>
+        {/* Right: bottle matrix */}
+        <div
+          className="grid gap-0.5 flex-shrink-0"
+          style={{ gridTemplateColumns: `repeat(${cols}, 1.5rem)` }}
+        >
+          {Array.from({ length: totalSlots }).map((_, i) => {
+            const isFull = i < fullSlots;
+            const isPartial = hasPartial && i === fullSlots;
+            return (
+              <span
+                key={i}
+                className="text-xl leading-none text-center"
+                style={{ opacity: isFull ? 1 : isPartial ? 0.2 + partial * 0.8 : 0.12 }}
+              >🍼</span>
+            );
+          })}
         </div>
       </div>
     </div>

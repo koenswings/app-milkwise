@@ -7,6 +7,7 @@ import {
   strict24hTotal,
   smoothedEffective,
   nextFeedTime,
+  waterToMilk,
 } from "@/lib/calculations";
 import { Feed, Settings, DerivedSettings } from "@/types";
 import Strict24hExplainer from "@/components/Strict24hExplainer";
@@ -52,6 +53,7 @@ export default function Dashboard() {
   const [now, setNow] = useState(Date.now());
   const [showStrictExplainer, setShowStrictExplainer] = useState(false);
   const [showSmoothedExplainer, setShowSmoothedExplainer] = useState(false);
+  const [nextBottleSize, setNextBottleSize] = useState<number | null>(null);
 
   const load = useCallback(async () => {
     // One-time migration of any existing localStorage data to the server
@@ -111,8 +113,12 @@ export default function Dashboard() {
   const strict24hPct = (strict24h / derived.dailyTargetMl) * 100;
   const smoothedPct = (smoothedMl / derived.dailyTargetMl) * 100;
 
-  const nextFeedResult = nextFeedTime(feeds, derived.hourlyRate, settings);
+  // Use selected next bottle size if set, otherwise fall back to standard
+  const effectiveBottleSize = nextBottleSize ?? settings.standardBottleVolume;
+  const nextFeedResult = nextFeedTime(feeds, derived.hourlyRate, { ...settings, standardBottleVolume: effectiveBottleSize });
   const nextFeed = nextFeedResult?.timestamp ?? null;
+  const nextFeedMilk = waterToMilk(effectiveBottleSize);
+  const standardNext = lastFeed ? lastFeed.timestamp + (nextFeedMilk / derived.hourlyRate) * 3_600_000 : null;
 
   return (
     <div className="max-w-lg mx-auto px-4 pt-6 pb-24">
@@ -160,11 +166,30 @@ export default function Dashboard() {
         />
       )}
 
+      {/* Next bottle size selector */}
+      <div className="flex items-center gap-2 mb-2">
+        <span className="text-xs text-slate-400">Next bottle:</span>
+        {[60, 90, 120].map((size) => (
+          <button
+            key={size}
+            onClick={() => setNextBottleSize(nextBottleSize === size ? null : size)}
+            className={`px-3 py-1 rounded-lg text-sm font-semibold transition-colors ${
+              effectiveBottleSize === size && nextBottleSize !== null
+                ? 'bg-blue-600 text-white'
+                : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+            }`}
+          >
+            {size} ml
+          </button>
+        ))}
+        {nextBottleSize !== null && (
+          <button onClick={() => setNextBottleSize(null)} className="text-xs text-slate-500 hover:text-slate-300 ml-1">× reset</button>
+        )}
+      </div>
+
       {/* Bottom row: last feed + two next feed clocks */}
       {(() => {
-        const standardNext = lastFeed
-          ? lastFeed.timestamp + (derived.milkPerBottle / derived.hourlyRate) * 3_600_000
-          : null;
+        // standardNext is computed above using effectiveBottleSize
 
         const tf = settings.timeFormat;
         function DigClock({ ts, sub }: { ts: number | null; sub?: string }) {

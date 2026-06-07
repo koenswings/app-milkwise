@@ -36,7 +36,7 @@ export default function SwipeableCard({ views, className = "" }: Props) {
 
   return (
     <div
-      className={`bg-slate-800 rounded-xl overflow-hidden select-none cursor-grab active:cursor-grabbing ${className}`}
+      className={`overflow-hidden select-none cursor-grab active:cursor-grabbing ${className}`}
       onTouchStart={onTouchStart}
       onTouchEnd={onTouchEnd}
       onMouseDown={onMouseDown}
