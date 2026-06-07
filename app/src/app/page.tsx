@@ -160,32 +160,62 @@ export default function Dashboard() {
         />
       )}
 
-      {/* Last feed + Next feed */}
-      <div className="grid grid-cols-2 gap-3 mb-4">
-        {/* Last feed — static */}
-        <div className="bg-slate-800 rounded-xl p-3">
-          <div className="text-xs text-slate-400 uppercase tracking-wide mb-1">Last feed</div>
-          {lastFeed ? (
+      {/* Bottom row: last feed + two next feed clocks */}
+      {(() => {
+        const standardNext = lastFeed
+          ? lastFeed.timestamp + (derived.milkPerBottle / derived.hourlyRate) * 3_600_000
+          : null;
+
+        const tf = settings.timeFormat;
+        function DigClock({ ts, label, sub, delta }: { ts: number | null; label: string; sub?: string; delta?: { text: string; color: string } | null }) {
+          if (!ts) return <span className="text-slate-500 text-xs">No feeds yet</span>;
+          const d = new Date(ts);
+          let h = d.getHours(), m = d.getMinutes();
+          const ampm = tf === '12h' ? (h >= 12 ? 'PM' : 'AM') : null;
+          if (tf === '12h') h = h % 12 || 12;
+          const hh = String(h).padStart(2, '0'), mm = String(m).padStart(2, '0');
+          return (
             <>
-              <div className="text-lg font-semibold text-slate-200 leading-tight">{formatDateTime(lastFeed.timestamp, settings.timeFormat)}</div>
-              <div className="text-slate-400 text-sm mt-0.5">{lastFeed.volume} ml</div>
-              <div className="text-xs text-slate-500 mt-1">{formatRelative(lastFeed.timestamp, now)}</div>
+              <div className="font-mono font-bold text-3xl text-blue-300 tracking-widest tabular-nums leading-none">
+                {hh}<span className="text-slate-500">:</span>{mm}{ampm && <span className="text-base text-slate-400 ml-0.5">{ampm}</span>}
+              </div>
+              {sub && <div className="text-xs text-slate-500 mt-0.5">{sub}</div>}
+              {delta && <div className={`text-xs mt-0.5 font-medium ${delta.color}`}>{delta.text}</div>}
             </>
-          ) : (
-            <span className="text-slate-500 text-sm">None yet</span>
-          )}
-        </div>
-        {/* Next feed — swipeable */}
-        <NextFeedCard
-          standardNext={lastFeed ? lastFeed.timestamp + (derived.milkPerBottle / derived.hourlyRate) * 3_600_000 : null}
-          adjustedNext={nextFeed}
-          idealIntervalHours={derived.idealIntervalHours}
-          now={now}
-          timeFormat={settings.timeFormat}
-          balanceMl={nextFeedResult?.balanceMl}
-          capped={nextFeedResult?.capped}
-        />
-      </div>
+          );
+        }
+
+        const deltaMin = standardNext && nextFeed ? Math.round((nextFeed - standardNext) / 60_000) : 0;
+        const delta = deltaMin === 0 ? null
+          : deltaMin > 0 ? { text: `+${deltaMin}m · overfed`, color: 'text-yellow-400' }
+          : { text: `${deltaMin}m · catch up`, color: 'text-blue-400' };
+
+        return (
+          <div className="grid grid-cols-3 gap-2 mb-4">
+            {/* Last feed */}
+            <div className="bg-slate-800 rounded-xl p-3">
+              <div className="text-xs text-slate-400 uppercase tracking-wide mb-1">Last feed</div>
+              {lastFeed ? (
+                <>
+                  <DigClock ts={lastFeed.timestamp} label="" />
+                  <div className="text-xs text-slate-400 mt-1">{lastFeed.volume} ml</div>
+                </>
+              ) : <span className="text-slate-500 text-xs">None yet</span>}
+            </div>
+            {/* Next feed standard */}
+            <div className="bg-slate-800 rounded-xl p-3">
+              <div className="text-xs text-slate-400 uppercase tracking-wide mb-1">Standard</div>
+              <DigClock ts={standardNext} label="" sub={formatRelative(standardNext!, now)} />
+            </div>
+            {/* Next feed adjusted */}
+            <div className="bg-slate-800 rounded-xl p-3">
+              <div className="text-xs text-slate-400 uppercase tracking-wide mb-1">Adjusted</div>
+              <DigClock ts={nextFeed} label="" sub={nextFeed ? formatRelative(nextFeed, now) : undefined} delta={delta} />
+              {nextFeedResult?.capped && <div className="text-xs text-yellow-400 mt-0.5">⚠️ max gap</div>}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Summary row */}
       <div className="grid grid-cols-3 gap-2">
