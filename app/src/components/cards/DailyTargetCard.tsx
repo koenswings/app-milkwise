@@ -12,7 +12,7 @@ interface Props {
 // ── View 0: Numeric ──────────────────────────────────────────────────────────
 function NumericView({ settings, derived }: Props) {
   return (
-    <div className="p-4">
+    <div className="p-3">
       <div className="text-sm text-slate-400 mb-1">Daily target</div>
       <div className="flex items-baseline gap-3 flex-wrap">
         <span className="text-xl font-semibold text-slate-100">{Math.round(derived.dailyTargetMl)} ml</span>
@@ -41,11 +41,11 @@ function BottleParadeView({ settings, derived }: Props) {
   const partial = totalBottles - full;
 
   return (
-    <div className="p-4">
-      <div className="text-xs text-slate-400 mb-2 uppercase tracking-wide">Today&apos;s feast 🍼</div>
+    <div className="p-3">
+      <div className="text-xs text-slate-400 mb-1 uppercase tracking-wide">Today&apos;s feast 🍼</div>
       <div className="flex flex-wrap gap-1 mb-2">
         {Array.from({ length: full }).map((_, i) => (
-          <span key={i} className="text-2xl leading-none">🍼</span>
+          <span key={i} className="text-xl leading-none">🍼</span>
         ))}
         {partial > 0.1 && (
           <span className="text-2xl leading-none" style={{ opacity: 0.3 + partial * 0.7 }}>🍼</span>
@@ -75,8 +75,8 @@ function FeedClockView({ derived }: { derived: DerivedSettings }) {
   }
 
   return (
-    <div className="p-4">
-      <div className="text-xs text-slate-400 mb-2 uppercase tracking-wide">Feed schedule ⏰</div>
+    <div className="p-3">
+      <div className="text-xs text-slate-400 mb-1 uppercase tracking-wide">Feed schedule ⏰</div>
       <div className="flex flex-wrap gap-1.5">
         {feedTimes.map((t, i) => (
           <span
@@ -105,8 +105,8 @@ function FunFactsView({ settings, derived }: Props) {
   ];
 
   return (
-    <div className="p-4">
-      <div className="text-xs text-slate-400 mb-2 uppercase tracking-wide">Did you know? 🌟</div>
+    <div className="p-3">
+      <div className="text-xs text-slate-400 mb-1 uppercase tracking-wide">Did you know? 🌟</div>
       <div className="text-slate-300 text-sm mb-2">
         <span className="text-slate-100 font-bold">{settings.weightKg} kg</span> baby needs <span className="text-slate-100 font-bold">{ml} ml</span>/day — that&apos;s like…
       </div>

@@ -10,9 +10,10 @@ import {
 } from "@/lib/calculations";
 import { Feed, Settings, DerivedSettings } from "@/types";
 import Strict24hExplainer from "@/components/Strict24hExplainer";
+import SmoothedExplainer from "@/components/SmoothedExplainer";
 import DailyTargetCard from "@/components/cards/DailyTargetCard";
-import StrictCard from "@/components/cards/StrictCard";
-import SmoothedCard from "@/components/cards/SmoothedCard";
+import StatusCard from "@/components/cards/StatusCard";
+import NextFeedCard from "@/components/cards/NextFeedCard";
 import BottomNav from "@/components/BottomNav";
 import Link from "next/link";
 import { formatDateTime } from "@/lib/formatTime";
@@ -50,6 +51,7 @@ export default function Dashboard() {
   const [derived, setDerived] = useState<DerivedSettings | null>(null);
   const [now, setNow] = useState(Date.now());
   const [showStrictExplainer, setShowStrictExplainer] = useState(false);
+  const [showSmoothedExplainer, setShowSmoothedExplainer] = useState(false);
 
   const load = useCallback(async () => {
     // One-time migration of any existing localStorage data to the server
@@ -130,40 +132,39 @@ export default function Dashboard() {
       {/* Daily target — swipeable */}
       <DailyTargetCard settings={settings} derived={derived} />
 
-      {/* Status cards — swipeable */}
-      <div className="grid grid-cols-2 gap-3 mb-6">
-        <StrictCard
-          strict24h={strict24h}
-          pct={strict24hPct}
-          dailyTargetMl={derived.dailyTargetMl}
-          standardBottleVolume={settings.standardBottleVolume}
-          yellowThresholdPct={settings.yellowThresholdPct}
-          redThresholdPct={settings.redThresholdPct}
-          onExplain={() => setShowStrictExplainer(true)}
-        />
-        <SmoothedCard
-          smoothedMl={smoothedMl}
-          smoothedBottles={smoothedBottles}
-          pct={smoothedPct}
-          dailyTargetMl={derived.dailyTargetMl}
-          standardBottleVolume={settings.standardBottleVolume}
-          hourlyRate={derived.hourlyRate}
-          yellowThresholdPct={settings.yellowThresholdPct}
-          redThresholdPct={settings.redThresholdPct}
-          feeds={feeds}
-          now={smoothedAt}
-        />
-      </div>
+      {/* 24h status — swipeable full width */}
+      <StatusCard
+        strict24h={strict24h}
+        strictPct={strict24hPct}
+        smoothedMl={smoothedMl}
+        smoothedPct={smoothedPct}
+        dailyTargetMl={derived.dailyTargetMl}
+        standardBottleVolume={settings.standardBottleVolume}
+        yellowThresholdPct={settings.yellowThresholdPct}
+        redThresholdPct={settings.redThresholdPct}
+        onStrictExplain={() => setShowStrictExplainer(true)}
+        onSmoothedExplain={() => setShowSmoothedExplainer(true)}
+      />
 
       {showStrictExplainer && (
         <Strict24hExplainer onClose={() => setShowStrictExplainer(false)} />
       )}
+      {showSmoothedExplainer && derived && (
+        <SmoothedExplainer
+          onClose={() => setShowSmoothedExplainer(false)}
+          hourlyRate={derived.hourlyRate}
+          standardBottleVolume={settings.standardBottleVolume}
+          dailyTargetMl={derived.dailyTargetMl}
+          feeds={feeds}
+          now={smoothedAt}
+        />
+      )}
 
-      {/* Last feed + Next feed side by side */}
+      {/* Last feed + Next feed */}
       <div className="grid grid-cols-2 gap-3 mb-4">
-        {/* Last feed */}
-        <div className="bg-slate-800 rounded-xl p-4">
-          <div className="text-sm text-slate-400 mb-1">Last feed</div>
+        {/* Last feed — static */}
+        <div className="bg-slate-800 rounded-xl p-3">
+          <div className="text-xs text-slate-400 uppercase tracking-wide mb-1">Last feed</div>
           {lastFeed ? (
             <>
               <div className="text-lg font-semibold text-slate-200 leading-tight">{formatDateTime(lastFeed.timestamp, settings.timeFormat)}</div>
@@ -174,36 +175,16 @@ export default function Dashboard() {
             <span className="text-slate-500 text-sm">None yet</span>
           )}
         </div>
-
-        {/* Next feed */}
-        <div className="bg-slate-800 rounded-xl p-4">
-          <div className="text-sm text-slate-400 mb-1">Next feed</div>
-          {nextFeed ? (
-            <>
-              <div className="text-lg font-semibold text-blue-300 leading-tight">{formatDateTime(nextFeed, settings.timeFormat)}</div>
-              <div className="text-xs text-slate-400 mt-0.5">{formatRelative(nextFeed, now)}</div>
-              {nextFeedResult && lastFeed && (() => {
-                const idealMs = (derived.milkPerBottle / derived.hourlyRate) * 3_600_000;
-                const idealNext = lastFeed.timestamp + idealMs;
-                const deltaMin = Math.round((nextFeed - idealNext) / 60_000);
-                if (nextFeedResult.capped) return (
-                  <div className="text-xs mt-1 font-medium text-yellow-400">⚠️ max gap · +{Math.round((nextFeed - idealNext) / 60_000)}m vs standard</div>
-                );
-                if (deltaMin === 0) return (
-                  <div className="text-xs mt-1 text-slate-500">on standard interval</div>
-                );
-                return (
-                  <div className={`text-xs mt-1 font-medium ${deltaMin > 0 ? 'text-yellow-400' : 'text-blue-400'}`}>
-                    {deltaMin > 0 ? `+${deltaMin}m vs standard · overfed` : `${deltaMin}m vs standard · catch up`}
-                  </div>
-                );
-              })()}
-
-            </>
-          ) : (
-            <span className="text-slate-500 text-sm">No feeds yet</span>
-          )}
-        </div>
+        {/* Next feed — swipeable */}
+        <NextFeedCard
+          standardNext={lastFeed ? lastFeed.timestamp + (derived.milkPerBottle / derived.hourlyRate) * 3_600_000 : null}
+          adjustedNext={nextFeed}
+          idealIntervalHours={derived.idealIntervalHours}
+          now={now}
+          timeFormat={settings.timeFormat}
+          balanceMl={nextFeedResult?.balanceMl}
+          capped={nextFeedResult?.capped}
+        />
       </div>
 
       {/* Summary row */}
