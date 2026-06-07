@@ -67,15 +67,15 @@ function Panel({ label, ml, pct, milkPerBottle, y, r, onExplain, feeds24h }:
       </div>
       <div className={`text-sm mb-2 ${colorClass(pct, y, r)}`}>{Math.round(pct)}% · {statusText(pct, y, r)}</div>
 
-      {/* Actual feed pictograms: real bottles from last 24h */}
-      <div className="flex flex-wrap gap-1 mt-1">
+      {/* Actual feed pictograms: real bottles from last 24h, labels bottom-aligned */}
+      <div className="flex flex-wrap items-end gap-1 mt-1">
         {feedEmojis.map((f, i) => (
-          <div key={i} className="flex flex-col items-center">
+          <div key={i} className="flex flex-col items-center justify-end">
             <span
-              className="leading-none"
+              className="leading-none block"
               style={{ fontSize: `${Math.max(0.8, Math.min(1.5, f.size + 0.3))}rem`, opacity: 0.7 + f.size * 0.3 }}
             >🍼</span>
-            <span className="text-xs text-slate-500 tabular-nums">{f.vol}</span>
+            <span className="text-xs text-slate-500 tabular-nums leading-none mt-0.5">{f.vol}</span>
           </div>
         ))}
       </div>
