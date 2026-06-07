@@ -167,7 +167,7 @@ export default function Dashboard() {
       )}
 
       {/* Next bottle size selector */}
-      <div className="flex items-center gap-2 mb-2">
+      <div className="flex items-center gap-2 mb-2 mt-1">
         <span className="text-xs text-slate-400">Next bottle:</span>
         {[60, 90, 120].map((size) => (
           <button

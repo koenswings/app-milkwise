@@ -29,13 +29,16 @@ function NumericView({ settings, derived }: Props) {
       <div className="text-xs text-slate-400 uppercase tracking-wide mb-2">Daily target</div>
 
       <div className="flex items-start justify-between gap-3">
-        {/* Left: ml and rhythm */}
+        {/* Left: ml + bottle count on same line */}
         <div className="flex-1">
-          <div className="text-3xl font-bold leading-none tabular-nums text-slate-100">{Math.round(derived.dailyTargetMl)}<span className="text-base font-normal ml-0.5">ml</span></div>
+          <div className="flex items-baseline gap-3">
+            <span className="text-3xl font-bold leading-none tabular-nums text-slate-100">{Math.round(derived.dailyTargetMl)}<span className="text-base font-normal ml-0.5">ml</span></span>
+            <span className="text-3xl font-bold leading-none tabular-nums text-blue-300">{targetBottles.toFixed(1)}<span className="text-base font-normal text-slate-500 ml-0.5">🍼</span></span>
+          </div>
           <div className="text-sm mt-1 text-slate-400">{settings.standardBottleVolume} ml · every {intervalLabel}</div>
           <div className="text-xs text-slate-600 mt-0.5">{settings.weightKg} kg × {settings.mlPerKgPerDay} ml/kg</div>
         </div>
-        {/* Right: bottle matrix + count */}
+        {/* Right: bottle matrix */}
         <div className="flex-shrink-0">
           <div
             className="grid gap-0.5"
@@ -52,9 +55,6 @@ function NumericView({ settings, derived }: Props) {
                 >🍼</span>
               );
             })}
-          </div>
-          <div className="text-xl font-bold tabular-nums text-right mt-0.5 text-blue-300">
-            {targetBottles.toFixed(1)}<span className="text-xs font-normal text-slate-500 ml-0.5">🍼</span>
           </div>
         </div>
       </div>
@@ -105,18 +105,18 @@ function FeedClockView({ derived }: { derived: DerivedSettings }) {
 
   return (
     <div className="p-3">
-      <div className="text-xs text-slate-400 mb-1 uppercase tracking-wide">Feed schedule ⏰</div>
-      <div className="flex flex-wrap gap-1.5">
+      <div className="text-xs text-slate-400 mb-2 uppercase tracking-wide">Feed schedule ⏰</div>
+      <div className="flex flex-wrap gap-2">
         {feedTimes.map((t, i) => (
           <span
             key={i}
-            className="text-xs bg-blue-900/60 border border-blue-700/50 text-blue-300 rounded-md px-1.5 py-0.5 font-mono"
+            className="text-base bg-blue-900/60 border border-blue-700/50 text-blue-300 rounded-lg px-2.5 py-1 font-mono font-semibold"
           >
             {hourLabel(t)}
           </span>
         ))}
       </div>
-      <div className="text-xs text-slate-500 mt-2">
+      <div className="text-sm text-slate-500 mt-2">
         Every {derived.idealIntervalHours.toFixed(1)}h &middot; ~{Math.round(feedsPerDay)} feeds/day
       </div>
     </div>
@@ -202,11 +202,10 @@ function TargetSpotlightView({ settings, derived }: Props) {
 export default function DailyTargetCard({ settings, derived }: Props) {
   return (
     <SwipeableCard
-      className="mb-3"
+      className="mb-2"
       views={[
         <NumericView key="num" settings={settings} derived={derived} />,
         <FeedClockView key="clock" derived={derived} />,
-        <FunFactsView key="facts" settings={settings} derived={derived} />,
         <TargetProgressView key="progress" settings={settings} derived={derived} />,
         <TargetSpotlightView key="spotlight" settings={settings} derived={derived} />,
       ]}

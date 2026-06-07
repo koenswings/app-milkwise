@@ -56,12 +56,15 @@ function Panel({ label, ml, pct, dailyTargetMl, milkPerBottle, y, r, onExplain }
 
       {/* Two-column layout: numbers left, bottle matrix + count right */}
       <div className="flex items-start justify-between gap-3">
-        {/* Left: ml and status */}
+        {/* Left: ml + bottle count on same line, status below */}
         <div className="flex-1">
-          <div className={`text-3xl font-bold leading-none tabular-nums ${colorClass(pct, y, r)}`}>{Math.round(ml)}<span className="text-base font-normal ml-0.5">ml</span></div>
+          <div className="flex items-baseline gap-3">
+            <span className={`text-3xl font-bold leading-none tabular-nums ${colorClass(pct, y, r)}`}>{Math.round(ml)}<span className="text-base font-normal ml-0.5">ml</span></span>
+            <span className={`text-3xl font-bold leading-none tabular-nums ${colorClass(pct, y, r)}`}>{bottles.toFixed(1)}<span className="text-base font-normal text-slate-500 ml-0.5">🍼</span></span>
+          </div>
           <div className={`text-sm mt-1 ${colorClass(pct, y, r)}`}>{Math.round(pct)}% · {statusText(pct, y, r)}</div>
         </div>
-        {/* Right: bottle matrix + count below */}
+        {/* Right: bottle matrix */}
         <div className="flex-shrink-0">
           <div
             className="grid gap-0.5"
@@ -78,10 +81,6 @@ function Panel({ label, ml, pct, dailyTargetMl, milkPerBottle, y, r, onExplain }
                 >🍼</span>
               );
             })}
-          </div>
-          {/* Count right-aligned under matrix, aligned with ml on left */}
-          <div className={`text-xl font-bold tabular-nums text-right mt-0.5 ${colorClass(pct, y, r)}`}>
-            {bottles.toFixed(1)}<span className="text-xs font-normal text-slate-500 ml-0.5">🍼</span>
           </div>
         </div>
       </div>
@@ -151,7 +150,7 @@ export default function StatusCard(props: Props) {
 
   return (
     <SwipeableCard
-      className="mb-3"
+      className="mb-2"
       views={[
         <Panel key="smoothed" label="Smoothed 24h" ml={smoothedMl} pct={smoothedPct}
           dailyTargetMl={dailyTargetMl} milkPerBottle={milkPerBottle} y={y} r={r}
