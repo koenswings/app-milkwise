@@ -182,11 +182,22 @@ export default function Dashboard() {
             <>
               <div className="text-lg font-semibold text-blue-300 leading-tight">{formatDateTime(nextFeed, settings.timeFormat)}</div>
               <div className="text-xs text-slate-400 mt-0.5">{formatRelative(nextFeed, now)}</div>
-              {nextFeedResult?.capped && (
-                <div className="text-xs mt-1 font-medium text-yellow-400">
-                  ⚠️ max gap cap applied
-                </div>
-              )}
+              {nextFeedResult && lastFeed && (() => {
+                const idealMs = (derived.milkPerBottle / derived.hourlyRate) * 3_600_000;
+                const idealNext = lastFeed.timestamp + idealMs;
+                const deltaMin = Math.round((nextFeed - idealNext) / 60_000);
+                if (nextFeedResult.capped) return (
+                  <div className="text-xs mt-1 font-medium text-yellow-400">⚠️ max gap · +{Math.round((nextFeed - idealNext) / 60_000)}m vs standard</div>
+                );
+                if (deltaMin === 0) return (
+                  <div className="text-xs mt-1 text-slate-500">on standard interval</div>
+                );
+                return (
+                  <div className={`text-xs mt-1 font-medium ${deltaMin > 0 ? 'text-yellow-400' : 'text-blue-400'}`}>
+                    {deltaMin > 0 ? `+${deltaMin}m vs standard · overfed` : `${deltaMin}m vs standard · catch up`}
+                  </div>
+                );
+              })()}
 
             </>
           ) : (
