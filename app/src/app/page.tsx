@@ -113,10 +113,10 @@ export default function Dashboard() {
   const strict24hPct = (strict24h / derived.dailyTargetMl) * 100;
   const smoothedPct = (smoothedMl / derived.dailyTargetMl) * 100;
 
-  // Use selected next bottle size if set, otherwise fall back to standard
   const effectiveBottleSize = nextBottleSize ?? settings.standardBottleVolume;
-  const nextFeedResult = nextFeedTime(feeds, derived.hourlyRate, { ...settings, standardBottleVolume: effectiveBottleSize });
+  const nextFeedResult = nextFeedTime(feeds, derived.hourlyRate, settings, nextBottleSize ?? undefined);
   const nextFeed = nextFeedResult?.timestamp ?? null;
+  // Standard next = lastFeed + interval for selected bottle
   const nextFeedMilk = waterToMilk(effectiveBottleSize);
   const standardNext = lastFeed ? lastFeed.timestamp + (nextFeedMilk / derived.hourlyRate) * 3_600_000 : null;
 

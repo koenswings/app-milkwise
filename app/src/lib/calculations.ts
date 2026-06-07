@@ -134,7 +134,8 @@ export function feedsWithCredit(
 export function nextFeedTime(
   feeds: Feed[],
   hourlyRate: number,
-  settings: Pick<Settings, 'standardBottleVolume' | 'maxFeedGapPct'>
+  settings: Pick<Settings, 'standardBottleVolume' | 'maxFeedGapPct'>,
+  selectedBottleVolume?: number  // override for next-bottle-size selector
 ): NextFeedResult | null {
   if (feeds.length === 0) return null;
 
@@ -144,7 +145,9 @@ export function nextFeedTime(
   // burned and must not inflate the balance across days.
   const recent = feeds.filter(f => f.timestamp >= lastFeedTs - windowMs);
   const sorted = [...recent].sort((a, b) => a.timestamp - b.timestamp);
-  const milkPerBottle = waterToMilk(settings.standardBottleVolume);
+  const standardMilk = waterToMilk(settings.standardBottleVolume); // the configured standard bottle
+  const selectedMilk = waterToMilk(selectedBottleVolume ?? settings.standardBottleVolume); // what we plan to give next
+  const milkPerBottle = standardMilk; // used for ideal interval and max gap
   const idealIntervalMs = (milkPerBottle / hourlyRate) * 3_600_000;
   const maxGapMs = idealIntervalMs * (settings.maxFeedGapPct / 100);
 
@@ -159,7 +162,15 @@ export function nextFeedTime(
   }
 
   const lastFeed = sorted[sorted.length - 1];
-  const rawNext = lastFeed.timestamp + (balance / hourlyRate) * 3_600_000;
+  // "adjusted" = when to give the selected bottle so that after giving it,
+  // the pool returns to exactly one standard bottle worth of energy.
+  // gap = (balance - standardMilk + selectedMilk) / hourlyRate
+  // A smaller selected bottle → smaller gap → earlier feed. A larger one → later.
+  // If result < 0 (pool too low), give immediately (gap = 0).
+  const rawGapMs = Math.max(0,
+    ((balance - standardMilk + selectedMilk) / hourlyRate) * 3_600_000
+  );
+  const rawNext = lastFeed.timestamp + rawGapMs;
   const maxGapNext = lastFeed.timestamp + maxGapMs;
   const timestamp = Math.min(rawNext, maxGapNext);
   const capped = timestamp < rawNext;
