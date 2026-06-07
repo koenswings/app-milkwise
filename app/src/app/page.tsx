@@ -182,9 +182,7 @@ export default function Dashboard() {
             {size} ml
           </button>
         ))}
-        {nextBottleSize !== null && (
-          <button onClick={() => setNextBottleSize(null)} className="text-xs text-slate-500 hover:text-slate-300 ml-1">× reset</button>
-        )}
+
       </div>
 
       {/* Bottom row: last feed + two next feed clocks */}
@@ -210,7 +208,7 @@ export default function Dashboard() {
         }
 
         return (
-          <div className="grid grid-cols-3 gap-2 mb-4">
+          <div className="grid grid-cols-3 gap-2 mb-3">
             {/* Last feed */}
             <div className="bg-slate-800 rounded-xl p-3">
               <div className="text-xs text-slate-400 uppercase tracking-wide mb-1">Last feed</div>
@@ -235,6 +233,11 @@ export default function Dashboard() {
                 </Link>
               </div>
               <DigClock ts={nextFeed} sub={nextFeed ? formatRelative(nextFeed, now) : undefined} />
+              {nextFeed && standardNext && (() => {
+                const d = Math.round((nextFeed - standardNext) / 60_000);
+                if (d === 0) return <div className="text-xs text-slate-500 mt-0.5">same as standard</div>;
+                return <div className={`text-xs mt-0.5 font-medium ${d > 0 ? 'text-yellow-400' : 'text-blue-400'}`}>{d > 0 ? `${d}m later` : `${Math.abs(d)}m earlier`} than standard</div>;
+              })()}
             </div>
           </div>
         );

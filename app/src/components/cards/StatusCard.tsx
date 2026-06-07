@@ -54,30 +54,35 @@ function Panel({ label, ml, pct, dailyTargetMl, milkPerBottle, y, r, onExplain }
         <button onClick={onExplain} className="w-4 h-4 rounded-full bg-slate-600 hover:bg-slate-500 text-slate-300 text-xs font-bold flex items-center justify-center leading-none">?</button>
       </div>
 
-      {/* Two-column layout: numbers left, bottle matrix right */}
+      {/* Two-column layout: numbers left, bottle matrix + count right */}
       <div className="flex items-start justify-between gap-3">
-        {/* Left: numbers */}
+        {/* Left: ml and status */}
         <div className="flex-1">
           <div className={`text-3xl font-bold leading-none tabular-nums ${colorClass(pct, y, r)}`}>{Math.round(ml)}<span className="text-base font-normal ml-0.5">ml</span></div>
-          <div className={`text-xl font-bold leading-none tabular-nums mt-1 ${colorClass(pct, y, r)}`}>{bottles.toFixed(1)}<span className="text-xs font-normal text-slate-500 ml-0.5">🍼</span></div>
           <div className={`text-sm mt-1 ${colorClass(pct, y, r)}`}>{Math.round(pct)}% · {statusText(pct, y, r)}</div>
         </div>
-        {/* Right: bottle matrix */}
-        <div
-          className="grid gap-0.5 flex-shrink-0"
-          style={{ gridTemplateColumns: `repeat(${cols}, 1.5rem)` }}
-        >
-          {Array.from({ length: totalSlots }).map((_, i) => {
-            const isFull = i < fullSlots;
-            const isPartial = hasPartial && i === fullSlots;
-            return (
-              <span
-                key={i}
-                className="text-xl leading-none text-center"
-                style={{ opacity: isFull ? 1 : isPartial ? 0.2 + partial * 0.8 : 0.12 }}
-              >🍼</span>
-            );
-          })}
+        {/* Right: bottle matrix + count below */}
+        <div className="flex-shrink-0">
+          <div
+            className="grid gap-0.5"
+            style={{ gridTemplateColumns: `repeat(${cols}, 1.5rem)` }}
+          >
+            {Array.from({ length: totalSlots }).map((_, i) => {
+              const isFull = i < fullSlots;
+              const isPartial = hasPartial && i === fullSlots;
+              return (
+                <span
+                  key={i}
+                  className="text-xl leading-none text-center"
+                  style={{ opacity: isFull ? 1 : isPartial ? 0.2 + partial * 0.8 : 0.12 }}
+                >🍼</span>
+              );
+            })}
+          </div>
+          {/* Count right-aligned under matrix, aligned with ml on left */}
+          <div className={`text-xl font-bold tabular-nums text-right mt-0.5 ${colorClass(pct, y, r)}`}>
+            {bottles.toFixed(1)}<span className="text-xs font-normal text-slate-500 ml-0.5">🍼</span>
+          </div>
         </div>
       </div>
     </div>
