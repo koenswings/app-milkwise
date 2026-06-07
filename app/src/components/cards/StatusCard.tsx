@@ -108,7 +108,7 @@ function ProgressView(props: Props) {
   }
   return (
     <div className="rounded-xl border border-slate-700 p-3">
-      <div className="text-xs text-slate-400 uppercase tracking-wide mb-2">Today’s intake</div>
+      <div className="text-xs text-slate-400 uppercase tracking-wide mb-2">Intake in the last 24 hrs</div>
       <Bar label="Smoothed 24h" ml={smoothedMl} pct={smoothedPct} onExplain={props.onSmoothedExplain} />
       <Bar label="Strict 24h" ml={strict24h} pct={strictPct} onExplain={props.onStrictExplain} />
       <div className="text-xs text-slate-600 mt-0.5">Target: {Math.round(dailyTargetMl)} ml · white line = 100%</div>
