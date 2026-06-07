@@ -64,23 +64,23 @@ function Panel({ label, ml, pct, dailyTargetMl, milkPerBottle, y, r, onExplain }
         {Math.round(pct)}% &middot; {statusText(pct, y, r)}
       </div>
 
-      {/* Bottle pictograms */}
-      <div className="flex flex-wrap gap-0.5 mt-2">
-        {Array.from({ length: Math.min(full, totalSlots) }).map((_, i) => (
-          <span key={i} className="text-xl leading-none">🍼</span>
-        ))}
-        {partial > 0.1 && full < totalSlots && (
-          <span className="text-xl leading-none" style={{ opacity: 0.2 + partial * 0.8 }}>🍼</span>
-        )}
-        {Array.from({ length: emptySlots }).map((_, i) => (
-          <span key={i} className="text-xl leading-none opacity-15">🍼</span>
-        ))}
-      </div>
-
-      {/* Bottle count */}
-      <div className={`text-xs mt-1 font-medium ${colorClass(pct, y, r)}`}>
-        {bottles.toFixed(1)}
-        <span className="text-slate-500 font-normal"> / {targetBottles.toFixed(1)} bottles</span>
+      {/* Bottles row: pictograms left, count right */}
+      <div className="flex items-end justify-between mt-2">
+        <div className="flex flex-wrap gap-0.5">
+          {Array.from({ length: Math.min(full, totalSlots) }).map((_, i) => (
+            <span key={i} className="text-xl leading-none">🍼</span>
+          ))}
+          {partial > 0.1 && full < totalSlots && (
+            <span className="text-xl leading-none" style={{ opacity: 0.2 + partial * 0.8 }}>🍼</span>
+          )}
+          {Array.from({ length: emptySlots }).map((_, i) => (
+            <span key={i} className="text-xl leading-none opacity-15">🍼</span>
+          ))}
+        </div>
+        <div className={`text-2xl font-bold leading-none ml-2 ${colorClass(pct, y, r)}`}>
+          {bottles.toFixed(1)}
+          <span className="text-base font-normal text-slate-500 ml-0.5">🍼</span>
+        </div>
       </div>
     </div>
   );
