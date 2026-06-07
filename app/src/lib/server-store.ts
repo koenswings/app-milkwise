@@ -16,7 +16,7 @@ const DEFAULT_SETTINGS: Settings = {
   yellowThresholdPct: 5,
   redThresholdPct: 10,
   timeFormat: '24h' as const,
-  maxFeedGapPct: 150,
+  maxCorrectionPct: 25,
 };
 
 function ensureDir() {

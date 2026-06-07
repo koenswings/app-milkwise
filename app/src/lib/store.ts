@@ -53,7 +53,7 @@ export async function deleteFeed(id: string): Promise<Feed[]> {
   return updated;
 }
 
-const DEFAULT_SETTINGS = { weightKg: 6.27, mlPerKgPerDay: 150, standardBottleVolume: 90, yellowThresholdPct: 5, redThresholdPct: 10, timeFormat: '24h' as const, maxFeedGapPct: 150 };
+const DEFAULT_SETTINGS = { weightKg: 6.27, mlPerKgPerDay: 150, standardBottleVolume: 90, yellowThresholdPct: 5, redThresholdPct: 10, timeFormat: '24h' as const, maxCorrectionPct: 25 };
 
 export async function getSettings(): Promise<Settings> {
   const res = await fetch("/api/settings", { cache: "no-store" });

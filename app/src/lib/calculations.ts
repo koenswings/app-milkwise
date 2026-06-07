@@ -122,53 +122,52 @@ export function feedsWithCredit(
 }
 
 /**
- * Model E — Running Balance next feed predictor.
+ * Formula S — Surplus/Deficit next feed predictor.
+ * Mathematically equivalent to Formula E3 (incremental, no floor, initial pool = milkPerBottle).
  *
- * The baby has one energy pool. Each bottle tops it up; it drains continuously
- * at hourlyRate between feeds. The next feed is when the pool hits zero.
- * Recovery is built-in: an overfed day has a larger pool → later next feed →
- * giving one standard bottle at that time returns the baby to normal rhythm.
+ * Proof of equivalence:
+ *   balance_E3 = milkPerBottle + (totalMilk24h − hourlyRate × 24)
+ *              = milkPerBottle + surplus
+ *              = balance_S
  *
- * maxGap is expressed as a % of the ideal interval so it scales with bottle size.
+ * Energy model: the baby starts each 24h period with one bottle in reserve.
+ * Feeds top up the reserve; the body burns at hourlyRate continuously.
+ * Reserve can go positive (overfed carry-over) or negative (energy deficit
+ * drawn from stored fat). rawNext = when the reserve returns to zero.
+ * A positive balance → later feed; negative balance → earlier feed.
+ *
+ * Correction is capped at ±maxCorrectionPct% of the ideal interval.
  */
 export function nextFeedTime(
   feeds: Feed[],
   hourlyRate: number,
-  settings: Pick<Settings, 'standardBottleVolume' | 'maxFeedGapPct'>
+  smoothedTotal: number,
+  dailyTargetMl: number,
+  settings: Pick<Settings, 'standardBottleVolume' | 'maxCorrectionPct'>
 ): NextFeedResult | null {
   if (feeds.length === 0) return null;
 
-  const lastFeedTs = feeds.reduce((a, b) => a.timestamp > b.timestamp ? a : b).timestamp;
-  const windowMs = 24 * 3_600_000;
-  // Only consider feeds within the last 24h — history older than that is fully
-  // burned and must not inflate the balance across days.
-  const recent = feeds.filter(f => f.timestamp >= lastFeedTs - windowMs);
-  const sorted = [...recent].sort((a, b) => a.timestamp - b.timestamp);
+  const lastFeed = feeds.reduce((a, b) => (a.timestamp > b.timestamp ? a : b));
   const milkPerBottle = waterToMilk(settings.standardBottleVolume);
   const idealIntervalMs = (milkPerBottle / hourlyRate) * 3_600_000;
-  const maxGapMs = idealIntervalMs * (settings.maxFeedGapPct / 100);
+  const maxCorrectionMs = idealIntervalMs * (settings.maxCorrectionPct / 100);
 
-  // Walk feeds oldest → newest within the 24h window
-  let balance = 0;
-  let prevTs = sorted[0].timestamp;
+  // Formula S: balance = milkPerBottle + surplus
+  const surplus = smoothedTotal - dailyTargetMl; // positive = overfed, negative = underfed
+  const balance = milkPerBottle + surplus;
 
-  for (const feed of sorted) {
-    const gapHours = (feed.timestamp - prevTs) / 3_600_000;
-    balance = Math.max(0, balance - hourlyRate * gapHours) + waterToMilk(feed.volume);
-    prevTs = feed.timestamp;
-  }
-
-  const lastFeed = sorted[sorted.length - 1];
-  // Model E (design doc): adjusted = when the current energy pool runs out.
-  // rawNext = lastFeed.timestamp + balance / hourlyRate
-  // Independent of which bottle size is selected — the bottle selector only
-  // changes "standard" in the UI layer.
+  // rawNext = lastFeed + balance / hourlyRate
+  const idealNext = lastFeed.timestamp + idealIntervalMs;
   const rawNext = lastFeed.timestamp + (balance / hourlyRate) * 3_600_000;
-  const maxGapNext = lastFeed.timestamp + maxGapMs;
-  const timestamp = Math.min(rawNext, maxGapNext);
-  const capped = timestamp < rawNext;
 
-  return { timestamp, balanceMl: Math.round(balance), capped };
+  // Clamp correction to ±maxCorrectionPct% of ideal interval
+  const clamped = Math.max(
+    idealNext - maxCorrectionMs,
+    Math.min(idealNext + maxCorrectionMs, rawNext)
+  );
+  const capped = Math.abs(clamped - rawNext) > 1;
+
+  return { timestamp: clamped, balanceMl: Math.round(balance), capped };
 }
 
 export function avgIntervalHours(feeds: Feed[]): number | null {

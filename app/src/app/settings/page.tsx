@@ -15,7 +15,7 @@ export default function SettingsPage() {
     yellowThresholdPct: 5,
     redThresholdPct: 10,
     timeFormat: '24h',
-    maxFeedGapPct: 150,
+    maxCorrectionPct: 25,
   });
   const [saved, setSaved] = useState(false);
   // Local string values so inputs don't snap back while typing (e.g. clearing "90" to type "120")
@@ -176,19 +176,19 @@ export default function SettingsPage() {
         </div>
 
         <div className="bg-slate-800 rounded-xl p-4">
-          <label className="block text-sm text-slate-400 mb-1">Max feed gap (%)</label>
+          <label className="block text-sm text-slate-400 mb-1">Max correction (%)</label>
           <input
             type="number"
-            value={fieldValue("maxFeedGapPct")}
-            onChange={(e) => handleChange("maxFeedGapPct", e.target.value)}
-            onBlur={() => handleBlur("maxFeedGapPct")}
-            step="10"
-            min="100"
-            max="300"
+            value={fieldValue("maxCorrectionPct")}
+            onChange={(e) => handleChange("maxCorrectionPct", e.target.value)}
+            onBlur={() => handleBlur("maxCorrectionPct")}
+            step="5"
+            min="5"
+            max="50"
             className="w-full bg-slate-700 border border-slate-600 rounded-lg px-4 py-3 text-slate-100 text-lg focus:outline-none focus:border-blue-500"
           />
           <p className="text-xs text-slate-500 mt-2">
-            Safety cap: max gap = this % of the ideal interval. 150% of 3h20m = 5h. Default: 150.
+            Max shift of adjusted next feed = ±this % of ideal interval. 25% of 148min = ±37min. Default: 25.
           </p>
         </div>
 
