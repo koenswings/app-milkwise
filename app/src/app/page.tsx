@@ -114,7 +114,7 @@ export default function Dashboard() {
   const smoothedPct = (smoothedMl / derived.dailyTargetMl) * 100;
 
   const effectiveBottleSize = nextBottleSize ?? settings.standardBottleVolume;
-  const nextFeedResult = nextFeedTime(feeds, derived.hourlyRate, settings, nextBottleSize ?? undefined);
+  const nextFeedResult = nextFeedTime(feeds, derived.hourlyRate, settings);
   const nextFeed = nextFeedResult?.timestamp ?? null;
   // Standard next = lastFeed + interval for selected bottle
   const nextFeedMilk = waterToMilk(effectiveBottleSize);
