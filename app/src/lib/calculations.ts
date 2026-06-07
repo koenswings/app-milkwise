@@ -138,12 +138,17 @@ export function nextFeedTime(
 ): NextFeedResult | null {
   if (feeds.length === 0) return null;
 
-  const sorted = [...feeds].sort((a, b) => a.timestamp - b.timestamp);
+  const lastFeedTs = feeds.reduce((a, b) => a.timestamp > b.timestamp ? a : b).timestamp;
+  const windowMs = 24 * 3_600_000;
+  // Only consider feeds within the last 24h — history older than that is fully
+  // burned and must not inflate the balance across days.
+  const recent = feeds.filter(f => f.timestamp >= lastFeedTs - windowMs);
+  const sorted = [...recent].sort((a, b) => a.timestamp - b.timestamp);
   const milkPerBottle = waterToMilk(settings.standardBottleVolume);
   const idealIntervalMs = (milkPerBottle / hourlyRate) * 3_600_000;
   const maxGapMs = idealIntervalMs * (settings.maxFeedGapPct / 100);
 
-  // Walk feeds oldest → newest, maintaining running balance
+  // Walk feeds oldest → newest within the 24h window
   let balance = 0;
   let prevTs = sorted[0].timestamp;
 
