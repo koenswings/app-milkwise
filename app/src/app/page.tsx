@@ -167,7 +167,7 @@ export default function Dashboard() {
           : null;
 
         const tf = settings.timeFormat;
-        function DigClock({ ts, label, sub, delta }: { ts: number | null; label: string; sub?: string; delta?: { text: string; color: string } | null }) {
+        function DigClock({ ts, sub }: { ts: number | null; sub?: string }) {
           if (!ts) return <span className="text-slate-500 text-xs">No feeds yet</span>;
           const d = new Date(ts);
           let h = d.getHours(), m = d.getMinutes();
@@ -180,15 +180,9 @@ export default function Dashboard() {
                 {hh}<span className="text-slate-500">:</span>{mm}{ampm && <span className="text-base text-slate-400 ml-0.5">{ampm}</span>}
               </div>
               {sub && <div className="text-xs text-slate-500 mt-0.5">{sub}</div>}
-              {delta && <div className={`text-xs mt-0.5 font-medium ${delta.color}`}>{delta.text}</div>}
             </>
           );
         }
-
-        const deltaMin = standardNext && nextFeed ? Math.round((nextFeed - standardNext) / 60_000) : 0;
-        const delta = deltaMin === 0 ? null
-          : deltaMin > 0 ? { text: `+${deltaMin}m · overfed`, color: 'text-yellow-400' }
-          : { text: `${deltaMin}m · catch up`, color: 'text-blue-400' };
 
         return (
           <div className="grid grid-cols-3 gap-2 mb-4">
@@ -197,21 +191,27 @@ export default function Dashboard() {
               <div className="text-xs text-slate-400 uppercase tracking-wide mb-1">Last feed</div>
               {lastFeed ? (
                 <>
-                  <DigClock ts={lastFeed.timestamp} label="" />
+                  <DigClock ts={lastFeed.timestamp} />
                   <div className="text-xs text-slate-400 mt-1">{lastFeed.volume} ml</div>
                 </>
               ) : <span className="text-slate-500 text-xs">None yet</span>}
             </div>
             {/* Next feed standard */}
             <div className="bg-slate-800 rounded-xl p-3">
-              <div className="text-xs text-slate-400 uppercase tracking-wide mb-1">Standard</div>
-              <DigClock ts={standardNext} label="" sub={formatRelative(standardNext!, now)} />
+              <div className="text-xs text-slate-400 uppercase tracking-wide mb-1">Next feed</div>
+              <DigClock ts={standardNext} sub={standardNext ? formatRelative(standardNext, now) : undefined} />
+              <div className="text-xs text-slate-600 mt-0.5">standard</div>
             </div>
             {/* Next feed adjusted */}
             <div className="bg-slate-800 rounded-xl p-3">
-              <div className="text-xs text-slate-400 uppercase tracking-wide mb-1">Adjusted</div>
-              <DigClock ts={nextFeed} label="" sub={nextFeed ? formatRelative(nextFeed, now) : undefined} delta={delta} />
-              {nextFeedResult?.capped && <div className="text-xs text-yellow-400 mt-0.5">⚠️ max gap</div>}
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-xs text-slate-400 uppercase tracking-wide">Next feed</span>
+                <Link href="/info/next-feed" className="w-4 h-4 rounded-full bg-slate-600 hover:bg-slate-500 text-slate-300 text-xs font-bold flex items-center justify-center leading-none">
+                  ?
+                </Link>
+              </div>
+              <DigClock ts={nextFeed} sub={nextFeed ? formatRelative(nextFeed, now) : undefined} />
+              <div className="text-xs text-slate-600 mt-0.5">adjusted</div>
             </div>
           </div>
         );
