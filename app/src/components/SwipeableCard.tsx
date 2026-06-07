@@ -53,19 +53,7 @@ export default function SwipeableCard({ views, className = "" }: Props) {
         ))}
       </div>
 
-      {/* Swipe hint — tiny line, no dots */}
-      {views.length > 1 && (
-        <div className="flex justify-center gap-1 pb-1.5">
-          {views.map((_, i) => (
-            <div
-              key={i}
-              className={`h-0.5 rounded-full transition-all ${
-                i === current ? "w-4 bg-slate-400" : "w-1.5 bg-slate-600"
-              }`}
-            />
-          ))}
-        </div>
-      )}
+
     </div>
   );
 }
