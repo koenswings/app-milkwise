@@ -28,35 +28,29 @@ function NumericView({ settings, derived }: Props) {
     <div className="rounded-xl border border-slate-700 p-3">
       <div className="text-xs text-slate-400 uppercase tracking-wide mb-2">Daily target</div>
 
-      <div className="flex items-start justify-between gap-3">
-        {/* Left: ml + bottle count on same line */}
-        <div className="flex-1">
-          <div className="flex items-baseline justify-between">
-            <span className="text-3xl font-bold leading-none tabular-nums text-slate-100">{Math.round(derived.dailyTargetMl)}<span className="text-base font-normal ml-0.5">ml</span></span>
-            <span className="text-3xl font-bold leading-none tabular-nums text-blue-300">{targetBottles.toFixed(1)}<span className="text-base font-normal text-slate-500 ml-0.5">bottles</span></span>
-          </div>
-          <div className="text-sm mt-1 text-slate-400">{settings.standardBottleVolume} ml · every {intervalLabel}</div>
-          <div className="text-xs text-slate-600 mt-0.5">{settings.weightKg} kg × {settings.mlPerKgPerDay} ml/kg</div>
-        </div>
-        {/* Right: bottle matrix */}
-        <div className="flex-shrink-0">
-          <div
-            className="grid gap-0.5"
-            style={{ gridTemplateColumns: `repeat(${cols}, 1.5rem)` }}
-          >
-            {Array.from({ length: totalSlots }).map((_, i) => {
-              const isFull = i < fullSlots;
-              const isPartial = hasPartial && i === fullSlots;
-              return (
-                <span
-                  key={i}
-                  className="text-xl leading-none text-center"
-                  style={{ opacity: isFull ? 0.8 : isPartial ? partial * 0.8 : 0.12 }}
-                >🍼</span>
-              );
-            })}
-          </div>
-        </div>
+      {/* Numbers full width — same layout as Status */}
+      <div className="flex items-baseline justify-between mb-2">
+        <span className="text-3xl font-bold leading-none tabular-nums text-slate-100">{Math.round(derived.dailyTargetMl)}<span className="text-base font-normal ml-0.5">ml</span></span>
+        <span className="text-3xl font-bold leading-none tabular-nums text-blue-300">{targetBottles.toFixed(1)}<span className="text-base font-normal text-slate-500 ml-0.5">bottles</span></span>
+      </div>
+      <div className="text-sm text-slate-400 mb-1">{settings.standardBottleVolume} ml · every {intervalLabel}</div>
+      <div className="text-xs text-slate-600 mb-2">{settings.weightKg} kg × {settings.mlPerKgPerDay} ml/kg</div>
+
+      {/* Bottle pictograms below — full width, same as Status */}
+      <div className="flex flex-wrap gap-1">
+        {Array.from({ length: totalSlots }).map((_, i) => {
+          const isFull = i < fullSlots;
+          const isPartial = hasPartial && i === fullSlots;
+          return (
+            <div key={i} className="flex flex-col items-center">
+              <span
+                className="leading-none"
+                style={{ fontSize: '1.25rem', opacity: isFull ? 0.85 : isPartial ? partial * 0.8 : 0.12 }}
+              >🍼</span>
+              <span className="text-xs text-slate-500 tabular-nums">{settings.standardBottleVolume}</span>
+            </div>
+          );
+        })}
       </div>
     </div>
   );

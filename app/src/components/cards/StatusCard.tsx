@@ -45,10 +45,12 @@ function Panel({ label, ml, pct, milkPerBottle, y, r, onExplain, feeds24h }:
 
   // Build actual feed pictograms from real 24h feeds
   // Each feed shown as an emoji sized relative to milkPerBottle
-  const feedEmojis = feeds24h.map(f => ({
-    vol: f.volume,
-    size: waterToMilk(f.volume) / milkPerBottle, // fraction of a standard bottle
-  }));
+  const feedEmojis = [...feeds24h]
+    .sort((a, b) => b.volume - a.volume) // large → small
+    .map(f => ({
+      vol: f.volume,
+      size: waterToMilk(f.volume) / milkPerBottle,
+    }));
 
   return (
     <div className={`rounded-xl border p-3 ${bgBorder(pct, y, r)}`}>
