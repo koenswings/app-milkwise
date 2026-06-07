@@ -58,7 +58,7 @@ function Panel({ label, ml, pct, dailyTargetMl, milkPerBottle, y, r, onExplain }
       <div className="flex items-start justify-between gap-3">
         {/* Left: ml + bottle count on same line, status below */}
         <div className="flex-1">
-          <div className="flex items-baseline gap-3">
+          <div className="flex items-baseline justify-between">
             <span className={`text-3xl font-bold leading-none tabular-nums ${colorClass(pct, y, r)}`}>{Math.round(ml)}<span className="text-base font-normal ml-0.5">ml</span></span>
             <span className={`text-3xl font-bold leading-none tabular-nums ${colorClass(pct, y, r)}`}>{bottles.toFixed(1)}<span className="text-base font-normal text-slate-500 ml-0.5">🍼</span></span>
           </div>

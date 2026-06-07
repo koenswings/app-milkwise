@@ -130,22 +130,40 @@ export default function Dashboard() {
       {/* Quick log button */}
       <Link
         href="/log"
-        className="block w-full text-center bg-blue-600 hover:bg-blue-500 text-white font-semibold py-3 rounded-xl mb-6 transition-colors"
+        className="block w-full text-center bg-blue-600 hover:bg-blue-500 text-white font-semibold py-3 rounded-xl mb-3 transition-colors"
       >
         ➕ Log Feed
       </Link>
 
-      {/* Daily target — swipeable */}
-      <DailyTargetCard settings={settings} derived={derived} />
+      {/* Next bottle size selector — sets standard bottle for all calculations */}
+      <div className="flex items-center gap-2 mb-3">
+        <span className="text-xs text-slate-400">Next bottle:</span>
+        {[60, 90, 120].map((size) => (
+          <button
+            key={size}
+            onClick={() => setNextBottleSize(nextBottleSize === size ? null : size)}
+            className={`px-3 py-1 rounded-lg text-sm font-semibold transition-colors ${
+              effectiveBottleSize === size && nextBottleSize !== null
+                ? 'bg-blue-600 text-white'
+                : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+            }`}
+          >
+            {size} ml
+          </button>
+        ))}
+      </div>
 
-      {/* 24h status — swipeable full width */}
+      {/* Daily target — swipeable, uses effectiveBottleSize */}
+      <DailyTargetCard settings={{ ...settings, standardBottleVolume: effectiveBottleSize }} derived={deriveSettings({ ...settings, standardBottleVolume: effectiveBottleSize })} />
+
+      {/* 24h status — swipeable full width, uses effectiveBottleSize */}
       <StatusCard
         strict24h={strict24h}
         strictPct={strict24hPct}
         smoothedMl={smoothedMl}
         smoothedPct={smoothedPct}
         dailyTargetMl={derived.dailyTargetMl}
-        standardBottleVolume={settings.standardBottleVolume}
+        standardBottleVolume={effectiveBottleSize}
         yellowThresholdPct={settings.yellowThresholdPct}
         redThresholdPct={settings.redThresholdPct}
         onStrictExplain={() => setShowStrictExplainer(true)}
@@ -166,24 +184,7 @@ export default function Dashboard() {
         />
       )}
 
-      {/* Next bottle size selector */}
-      <div className="flex items-center gap-2 mb-2 mt-1">
-        <span className="text-xs text-slate-400">Next bottle:</span>
-        {[60, 90, 120].map((size) => (
-          <button
-            key={size}
-            onClick={() => setNextBottleSize(nextBottleSize === size ? null : size)}
-            className={`px-3 py-1 rounded-lg text-sm font-semibold transition-colors ${
-              effectiveBottleSize === size && nextBottleSize !== null
-                ? 'bg-blue-600 text-white'
-                : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
-            }`}
-          >
-            {size} ml
-          </button>
-        ))}
 
-      </div>
 
       {/* Bottom row: last feed + two next feed clocks */}
       {(() => {
@@ -221,13 +222,13 @@ export default function Dashboard() {
             </div>
             {/* Next feed standard */}
             <div className="bg-slate-800 rounded-xl p-3">
-              <div className="text-xs text-slate-400 uppercase tracking-wide mb-1">Next standard</div>
+              <div className="text-xs text-slate-400 uppercase tracking-wide mb-1">Next</div>
               <DigClock ts={standardNext} sub={standardNext ? formatRelative(standardNext, now) : undefined} />
             </div>
             {/* Next feed adjusted */}
             <div className="bg-slate-800 rounded-xl p-3">
               <div className="flex items-center justify-between mb-1">
-                <span className="text-xs text-slate-400 uppercase tracking-wide">Next adjusted</span>
+                <span className="text-xs text-slate-400 uppercase tracking-wide">Adjusted</span>
                 <Link href="/info/next-feed" className="w-4 h-4 rounded-full bg-slate-600 hover:bg-slate-500 text-slate-300 text-xs font-bold flex items-center justify-center leading-none">
                   ?
                 </Link>

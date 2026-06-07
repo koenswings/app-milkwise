@@ -31,7 +31,7 @@ function NumericView({ settings, derived }: Props) {
       <div className="flex items-start justify-between gap-3">
         {/* Left: ml + bottle count on same line */}
         <div className="flex-1">
-          <div className="flex items-baseline gap-3">
+          <div className="flex items-baseline justify-between">
             <span className="text-3xl font-bold leading-none tabular-nums text-slate-100">{Math.round(derived.dailyTargetMl)}<span className="text-base font-normal ml-0.5">ml</span></span>
             <span className="text-3xl font-bold leading-none tabular-nums text-blue-300">{targetBottles.toFixed(1)}<span className="text-base font-normal text-slate-500 ml-0.5">🍼</span></span>
           </div>
@@ -206,7 +206,7 @@ export default function DailyTargetCard({ settings, derived }: Props) {
       views={[
         <NumericView key="num" settings={settings} derived={derived} />,
         <FeedClockView key="clock" derived={derived} />,
-        <TargetProgressView key="progress" settings={settings} derived={derived} />,
+        <FunFactsView key="facts" settings={settings} derived={derived} />,
         <TargetSpotlightView key="spotlight" settings={settings} derived={derived} />,
       ]}
     />
