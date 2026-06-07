@@ -198,20 +198,18 @@ export default function Dashboard() {
             </div>
             {/* Next feed standard */}
             <div className="bg-slate-800 rounded-xl p-3">
-              <div className="text-xs text-slate-400 uppercase tracking-wide mb-1">Next feed</div>
+              <div className="text-xs text-slate-400 uppercase tracking-wide mb-1">Next standard</div>
               <DigClock ts={standardNext} sub={standardNext ? formatRelative(standardNext, now) : undefined} />
-              <div className="text-xs text-slate-600 mt-0.5">standard</div>
             </div>
             {/* Next feed adjusted */}
             <div className="bg-slate-800 rounded-xl p-3">
               <div className="flex items-center justify-between mb-1">
-                <span className="text-xs text-slate-400 uppercase tracking-wide">Next feed</span>
+                <span className="text-xs text-slate-400 uppercase tracking-wide">Next adjusted</span>
                 <Link href="/info/next-feed" className="w-4 h-4 rounded-full bg-slate-600 hover:bg-slate-500 text-slate-300 text-xs font-bold flex items-center justify-center leading-none">
                   ?
                 </Link>
               </div>
               <DigClock ts={nextFeed} sub={nextFeed ? formatRelative(nextFeed, now) : undefined} />
-              <div className="text-xs text-slate-600 mt-0.5">adjusted</div>
             </div>
           </div>
         );

@@ -145,16 +145,64 @@ function FunFactsView({ settings, derived }: Props) {
   );
 }
 
-// ── Export ───────────────────────────────────────────────────────────────────
+// ── Extra view A: Progress bar (matched with StatusCard ProgressView) ────────
+function TargetProgressView({ settings, derived }: Props) {
+  const milkPerBottle = waterToMilk(settings.standardBottleVolume);
+  const targetBottles = derived.dailyTargetMl / milkPerBottle;
+  const h = Math.floor(derived.idealIntervalHours);
+  const m = Math.round((derived.idealIntervalHours - h) * 60);
+  return (
+    <div className="rounded-xl border border-slate-700 p-3">
+      <div className="text-xs text-slate-400 uppercase tracking-wide mb-2">Daily target</div>
+      <div className="text-slate-300 text-sm font-medium mb-2">
+        {Math.round(derived.dailyTargetMl)} ml · {targetBottles.toFixed(1)} 🍼
+      </div>
+      <div className="relative h-4 bg-slate-700 rounded-full overflow-hidden mb-1">
+        <div className="absolute inset-0 rounded-full bg-blue-500/60" />
+        <div className="absolute inset-0 flex items-center justify-center text-xs font-bold text-white drop-shadow">100%</div>
+      </div>
+      <div className="text-xs text-slate-500">
+        Every {h > 0 ? `${h}h ${m}m` : `${m}m`} · {settings.weightKg} kg × {settings.mlPerKgPerDay} ml/kg
+      </div>
+    </div>
+  );
+}
+
+// ── Extra view B: Number spotlight (matched with StatusCard SpotlightView) ───
+function TargetSpotlightView({ settings, derived }: Props) {
+  const milkPerBottle = waterToMilk(settings.standardBottleVolume);
+  const targetBottles = derived.dailyTargetMl / milkPerBottle;
+  const h = Math.floor(derived.idealIntervalHours);
+  const m = Math.round((derived.idealIntervalHours - h) * 60);
+  return (
+    <div className="rounded-xl border border-slate-700 p-3">
+      <div className="text-xs text-slate-400 uppercase tracking-wide mb-2">Daily target</div>
+      <div className="grid grid-cols-2 gap-3 text-center">
+        <div>
+          <div className="text-4xl font-black text-slate-100 tabular-nums">{Math.round(derived.dailyTargetMl)}</div>
+          <div className="text-xs text-slate-400 mt-0.5">ml / day</div>
+        </div>
+        <div>
+          <div className="text-4xl font-black text-blue-300 tabular-nums">{targetBottles.toFixed(1)}</div>
+          <div className="text-xs text-slate-400 mt-0.5">bottles of {settings.standardBottleVolume} ml</div>
+        </div>
+      </div>
+      <div className="text-xs text-slate-600 text-center mt-2">every {h > 0 ? `${h}h ${m}m` : `${m}m`}</div>
+    </div>
+  );
+}
+
+// ── Export ────────────────────────────────────────────────────────────────────
 export default function DailyTargetCard({ settings, derived }: Props) {
   return (
     <SwipeableCard
-      className="mb-4"
+      className="mb-3"
       views={[
         <NumericView key="num" settings={settings} derived={derived} />,
-        <BottleParadeView key="bottles" settings={settings} derived={derived} />,
         <FeedClockView key="clock" derived={derived} />,
         <FunFactsView key="facts" settings={settings} derived={derived} />,
+        <TargetProgressView key="progress" settings={settings} derived={derived} />,
+        <TargetSpotlightView key="spotlight" settings={settings} derived={derived} />,
       ]}
     />
   );

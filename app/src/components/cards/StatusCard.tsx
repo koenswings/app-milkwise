@@ -86,6 +86,62 @@ function Panel({ label, ml, pct, dailyTargetMl, milkPerBottle, y, r, onExplain }
   );
 }
 
+// ── Extra view A: Progress bar (“what’s been consumed”) ──────────────────────────
+function ProgressView(props: Props) {
+  const { strict24h, strictPct, smoothedMl, smoothedPct, dailyTargetMl, yellowThresholdPct: y, redThresholdPct: r } = props;
+  function Bar({ label, ml, pct, onExplain }: { label: string; ml: number; pct: number; onExplain: () => void }) {
+    const fill = Math.min(pct, 150);
+    return (
+      <div className="mb-3">
+        <div className="flex items-center justify-between mb-1">
+          <span className="text-xs text-slate-400">{label}</span>
+          <div className="flex items-center gap-1.5">
+            <span className={`text-sm font-bold ${colorClass(pct, y, r)}`}>{Math.round(ml)} ml</span>
+            <button onClick={onExplain} className="w-4 h-4 rounded-full bg-slate-600 text-slate-300 text-xs font-bold flex items-center justify-center leading-none">?</button>
+          </div>
+        </div>
+        <div className="relative h-4 bg-slate-700 rounded-full overflow-hidden">
+          <div className="absolute inset-y-0 left-0 rounded-full transition-all" style={{ width: `${(fill / 150) * 100}%`, backgroundColor: fill <= 100 + y ? '#4ade80' : fill <= 100 + r ? '#facc15' : '#f87171' }} />
+          <div className="absolute inset-y-0 left-0 right-0 flex items-center justify-center text-xs font-bold text-white drop-shadow">{Math.round(pct)}%</div>
+          {/* Target line */}
+          <div className="absolute inset-y-0 w-0.5 bg-white/40" style={{ left: `${(100 / 150) * 100}%` }} />
+        </div>
+      </div>
+    );
+  }
+  return (
+    <div className="rounded-xl border border-slate-700 p-3">
+      <div className="text-xs text-slate-400 uppercase tracking-wide mb-2">Today’s intake</div>
+      <Bar label="Smoothed 24h" ml={smoothedMl} pct={smoothedPct} onExplain={props.onSmoothedExplain} />
+      <Bar label="Strict 24h" ml={strict24h} pct={strictPct} onExplain={props.onStrictExplain} />
+      <div className="text-xs text-slate-600 mt-0.5">Target: {Math.round(dailyTargetMl)} ml · white line = 100%</div>
+    </div>
+  );
+}
+
+// ── Extra view B: Number spotlight ──────────────────────────────────────────
+function SpotlightView({ smoothedMl, smoothedPct, strict24h, strictPct, yellowThresholdPct: y, redThresholdPct: r, onSmoothedExplain, onStrictExplain }: Props) {
+  return (
+    <div className="rounded-xl border border-slate-700 p-3">
+      <div className="text-xs text-slate-400 uppercase tracking-wide mb-2">At a glance</div>
+      <div className="grid grid-cols-2 gap-3 text-center">
+        <div>
+          <div className={`text-4xl font-black tabular-nums ${colorClass(smoothedPct, y, r)}`}>{Math.round(smoothedPct)}%</div>
+          <div className="text-xs text-slate-400 mt-0.5">Smoothed</div>
+          <div className="text-xs text-slate-500">{Math.round(smoothedMl)} ml</div>
+          <button onClick={onSmoothedExplain} className="mt-1 w-4 h-4 rounded-full bg-slate-600 text-slate-300 text-xs font-bold mx-auto flex items-center justify-center leading-none">?</button>
+        </div>
+        <div>
+          <div className={`text-4xl font-black tabular-nums ${colorClass(strictPct, y, r)}`}>{Math.round(strictPct)}%</div>
+          <div className="text-xs text-slate-400 mt-0.5">Strict</div>
+          <div className="text-xs text-slate-500">{Math.round(strict24h)} ml</div>
+          <button onClick={onStrictExplain} className="mt-1 w-4 h-4 rounded-full bg-slate-600 text-slate-300 text-xs font-bold mx-auto flex items-center justify-center leading-none">?</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function StatusCard(props: Props) {
   const { strict24h, strictPct, smoothedMl, smoothedPct, dailyTargetMl, standardBottleVolume, yellowThresholdPct: y, redThresholdPct: r } = props;
   const milkPerBottle = waterToMilk(standardBottleVolume);
@@ -100,6 +156,8 @@ export default function StatusCard(props: Props) {
         <Panel key="strict" label="Strict 24h" ml={strict24h} pct={strictPct}
           dailyTargetMl={dailyTargetMl} milkPerBottle={milkPerBottle} y={y} r={r}
           onExplain={props.onStrictExplain} />,
+        <ProgressView key="progress" {...props} />,
+        <SpotlightView key="spotlight" {...props} />,
       ]}
     />
   );
