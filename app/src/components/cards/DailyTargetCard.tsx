@@ -41,13 +41,16 @@ function NumericView({ settings, derived }: Props) {
         {Array.from({ length: totalSlots }).map((_, i) => {
           const isFull = i < fullSlots;
           const isPartial = hasPartial && i === fullSlots;
+          const label = isPartial
+            ? Math.round(partial * milkPerBottle)  // remainder ml for partial
+            : settings.standardBottleVolume;        // full bottle water ml
           return (
             <div key={i} className="flex flex-col items-center">
               <span
                 className="leading-none"
-                style={{ fontSize: '1.25rem', opacity: isFull ? 0.85 : isPartial ? partial * 0.8 : 0.12 }}
+                style={{ fontSize: '1.25rem', opacity: isFull ? 0.85 : isPartial ? 0.15 + partial * 0.85 : 0.12 }}
               >🍼</span>
-              <span className="text-xs text-slate-500 tabular-nums">{settings.standardBottleVolume}</span>
+              <span className="text-xs text-slate-500 tabular-nums">{label}</span>
             </div>
           );
         })}

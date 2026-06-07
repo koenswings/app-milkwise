@@ -41,16 +41,12 @@ function statusText(pct: number, y: number, r: number) {
 function Panel({ label, ml, pct, milkPerBottle, y, r, onExplain, feeds24h }:
   { label: string; ml: number; pct: number; milkPerBottle: number; y: number; r: number; onExplain: () => void; feeds24h: Feed[] }) {
 
+  // Equivalent standard-bottle count — pictograms match the number above
   const bottles = ml / milkPerBottle;
-
-  // Build actual feed pictograms from real 24h feeds
-  // Each feed shown as an emoji sized relative to milkPerBottle
-  const feedEmojis = [...feeds24h]
-    .sort((a, b) => b.volume - a.volume) // large → small
-    .map(f => ({
-      vol: f.volume,
-      size: waterToMilk(f.volume) / milkPerBottle,
-    }));
+  const full = Math.floor(bottles);
+  const partial = bottles - full;
+  const hasPartial = partial > 0.05;
+  const partialMl = Math.round(partial * milkPerBottle);
 
   return (
     <div className={`rounded-xl border p-3 ${bgBorder(pct, y, r)}`}>
@@ -67,17 +63,20 @@ function Panel({ label, ml, pct, milkPerBottle, y, r, onExplain, feeds24h }:
       </div>
       <div className={`text-sm mb-2 ${colorClass(pct, y, r)}`}>{Math.round(pct)}% · {statusText(pct, y, r)}</div>
 
-      {/* Actual feed pictograms: real bottles from last 24h, labels bottom-aligned */}
+      {/* Equivalent standard-bottle pictograms — count matches number, labels bottom-aligned */}
       <div className="flex flex-wrap items-end gap-1 mt-1">
-        {feedEmojis.map((f, i) => (
-          <div key={i} className="flex flex-col items-center justify-end">
-            <span
-              className="leading-none block"
-              style={{ fontSize: `${Math.max(0.8, Math.min(1.5, f.size + 0.3))}rem`, opacity: 0.7 + f.size * 0.3 }}
-            >🍼</span>
-            <span className="text-xs text-slate-500 tabular-nums leading-none mt-0.5">{f.vol}</span>
+        {Array.from({ length: full }).map((_, i) => (
+          <div key={i} className="flex flex-col items-center">
+            <span className="text-xl leading-none">🍼</span>
+            <span className="text-xs text-slate-500 tabular-nums leading-none mt-0.5">{Math.round(milkPerBottle)}</span>
           </div>
         ))}
+        {hasPartial && (
+          <div className="flex flex-col items-center">
+            <span className="text-xl leading-none" style={{ opacity: 0.15 + partial * 0.85 }}>🍼</span>
+            <span className="text-xs text-slate-500 tabular-nums leading-none mt-0.5">{partialMl}</span>
+          </div>
+        )}
       </div>
     </div>
   );
