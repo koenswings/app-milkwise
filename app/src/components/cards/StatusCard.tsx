@@ -82,6 +82,57 @@ function Panel({ label, ml, pct, milkPerBottle, standardBottleVolume, y, r, onEx
   );
 }
 
+// ── Panel with gauge replacing bottle count ───────────────────────────────────────────
+function PanelWithGauge({ label, ml, pct, milkPerBottle, y, r, onExplain, feeds24h }:
+  { label: string; ml: number; pct: number; milkPerBottle: number; y: number; r: number; onExplain: () => void; feeds24h: Feed[] }) {
+
+  const diff = pct - 100;
+  const fillHeight = Math.min(Math.max((pct - 60) / 80 * 100, 0), 100);
+  const fillColor = Math.abs(diff) <= y ? '#4ade80' : diff > 0 ? '#f97316' : '#60a5fa';
+
+  const feedEmojis = [...feeds24h]
+    .sort((a, b) => b.volume - a.volume)
+    .map(f => ({ vol: f.volume, size: waterToMilk(f.volume) / milkPerBottle }));
+
+  return (
+    <div className={`rounded-xl border p-3 ${bgBorder(pct, y, r)}`}>
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-xs text-slate-400 uppercase tracking-wide">{label}</span>
+        <button onClick={onExplain} className="w-4 h-4 rounded-full bg-slate-600 hover:bg-slate-500 text-slate-300 text-xs font-bold flex items-center justify-center leading-none">?</button>
+      </div>
+
+      <div className="flex items-start gap-3">
+        {/* Left: ml + pictograms */}
+        <div className="flex-1">
+          <div className={`text-3xl font-bold leading-none tabular-nums mb-1 ${colorClass(pct, y, r)}`}>{Math.round(ml)}<span className="text-base font-normal ml-0.5">ml</span></div>
+          <div className={`text-sm mb-2 ${colorClass(pct, y, r)}`}>{Math.round(pct)}% · {statusText(pct, y, r)}</div>
+          <div className="flex flex-wrap items-end gap-1">
+            {feedEmojis.map((f, i) => (
+              <div key={i} className="flex flex-col items-center justify-end">
+                <span className="leading-none block" style={{ fontSize: `${Math.max(0.8, Math.min(1.5, f.size + 0.3))}rem`, opacity: 0.7 + f.size * 0.3 }}>🍼</span>
+                <span className="text-xs text-slate-500 tabular-nums leading-none mt-0.5">{f.vol}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Right: vertical gauge */}
+        <div className="flex flex-col items-center flex-shrink-0">
+          <span className="text-xs text-orange-400 mb-0.5">↑</span>
+          <div className="relative w-7 rounded-t-lg border-2 border-slate-500 overflow-hidden" style={{ height: 72 }}>
+            <div className="absolute bottom-0 left-0 right-0 transition-all" style={{ height: `${fillHeight}%`, backgroundColor: fillColor }} />
+            <div className="absolute left-0 right-0 h-0.5 bg-white/60" style={{ bottom: '50%' }} />
+          </div>
+          <span className="text-xs text-blue-400 mt-0.5">↓</span>
+          <div className="text-xs font-bold tabular-nums mt-0.5" style={{ color: fillColor }}>
+            {diff > 0 ? '+' : ''}{Math.round(diff)}%
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Extra view A: Progress bar (“what’s been consumed”) ──────────────────────────
 function ProgressView(props: Props) {
   const { strict24h, strictPct, smoothedMl, smoothedPct, dailyTargetMl, yellowThresholdPct: y, redThresholdPct: r } = props;
@@ -277,6 +328,9 @@ export default function StatusCard(props: Props) {
         <Panel key="strict" label="Strict 24h" ml={strict24h} pct={strictPct}
           milkPerBottle={milkPerBottle} standardBottleVolume={standardBottleVolume} y={y} r={r}
           onExplain={props.onStrictExplain} feeds24h={feeds24h} />,
+        <PanelWithGauge key="smoothed-gauge" label="STATUS LAST 24H" ml={smoothedMl} pct={smoothedPct}
+          milkPerBottle={milkPerBottle} y={y} r={r}
+          onExplain={props.onSmoothedExplain} feeds24h={feeds24h} />,
         <ProgressView key="progress" {...props} />,
         <SpotlightView key="spotlight" {...props} />,
         <BiDirectionalView key="bidir" {...props} />,
