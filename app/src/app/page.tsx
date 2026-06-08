@@ -67,23 +67,24 @@ export default function Dashboard() {
   useEffect(() => {
     load();
 
-    // Refresh every minute
-    const interval = setInterval(() => { load(); }, 60000);
+    // Reload on page focus (handles navigation back from Settings or Log)
+    const onFocus = () => load();
+    window.addEventListener("focus", onFocus);
 
-    // Also reload when localStorage changes (e.g. after CSV import)
+    // Reload when localStorage changes (CSV import etc.)
     const onStorage = (e: StorageEvent) => {
       if (e.key === "bmt_feeds" || e.key === "bmt_settings") load();
     };
     window.addEventListener("storage", onStorage);
 
-    // Reload on page focus (handles same-tab navigation back from Settings)
-    const onFocus = () => load();
-    window.addEventListener("focus", onFocus);
+    // Only the relative time labels ("in Xh Ym") need to tick — update 'now' every minute
+    // without reloading feeds/settings (status calculations are frozen at lastFeed.timestamp)
+    const clockInterval = setInterval(() => setNow(Date.now()), 60000);
 
     return () => {
-      clearInterval(interval);
-      window.removeEventListener("storage", onStorage);
       window.removeEventListener("focus", onFocus);
+      window.removeEventListener("storage", onStorage);
+      clearInterval(clockInterval);
     };
   }, [load]);
 
