@@ -116,8 +116,8 @@ function PanelWithGauge({ label, ml, pct, milkPerBottle, dailyTargetMl, y, r, on
           </div>
         </div>
 
-        {/* Right: vertical gauge */}
-        <div className="flex flex-col items-center flex-shrink-0 mr-1">
+        {/* Right: vertical gauge — centred in right quarter */}
+        <div className="flex flex-col items-center flex-shrink-0 mx-3">
           <span className="text-xs text-orange-400 mb-0.5">↑</span>
           <div className="relative w-7 rounded-t-lg border-2 border-slate-500 overflow-hidden" style={{ height: 72 }}>
             <div className="absolute bottom-0 left-0 right-0 transition-all" style={{ height: `${fillHeight}%`, backgroundColor: fillColor }} />
@@ -323,15 +323,15 @@ export default function StatusCard(props: Props) {
     <SwipeableCard
       className="mb-2"
       views={[
+        <PanelWithGauge key="smoothed-gauge" label="STATUS LAST 24H" ml={smoothedMl} pct={smoothedPct}
+          milkPerBottle={milkPerBottle} dailyTargetMl={props.dailyTargetMl} y={y} r={r}
+          onExplain={props.onSmoothedExplain} feeds24h={feeds24h} />,
         <Panel key="smoothed" label="STATUS LAST 24H" ml={smoothedMl} pct={smoothedPct}
           milkPerBottle={milkPerBottle} standardBottleVolume={standardBottleVolume} y={y} r={r}
           onExplain={props.onSmoothedExplain} feeds24h={feeds24h} />,
         <Panel key="strict" label="Strict 24h" ml={strict24h} pct={strictPct}
           milkPerBottle={milkPerBottle} standardBottleVolume={standardBottleVolume} y={y} r={r}
           onExplain={props.onStrictExplain} feeds24h={feeds24h} />,
-        <PanelWithGauge key="smoothed-gauge" label="STATUS LAST 24H" ml={smoothedMl} pct={smoothedPct}
-          milkPerBottle={milkPerBottle} dailyTargetMl={props.dailyTargetMl} y={y} r={r}
-          onExplain={props.onSmoothedExplain} feeds24h={feeds24h} />,
         <ProgressView key="progress" {...props} />,
         <SpotlightView key="spotlight" {...props} />,
         <BiDirectionalView key="bidir" {...props} />,

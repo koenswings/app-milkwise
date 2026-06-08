@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { addFeed, getFeeds, generateId, getSettings } from "@/lib/store";
 import { formatDateTime } from "@/lib/formatTime";
-import { waterToMilk } from "@/lib/calculations";
+import { waterToMilk, milkToWater } from "@/lib/calculations";
 import { Feed, Settings } from "@/types";
 import BottomNav from "@/components/BottomNav";
 import { useRouter } from "next/navigation";
@@ -62,7 +62,10 @@ export default function LogPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const vol = parseFloat(volume);
+    const milkMl = parseFloat(volume);
+    // volume field shows milk ml — convert back to water ml for storage
+    // (all calculations use waterToMilk(feed.volume) internally)
+    const vol = Math.round(milkToWater(milkMl));
     if (isNaN(vol) || vol <= 0) return;
 
     setSaving(true);

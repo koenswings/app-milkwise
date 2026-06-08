@@ -30,6 +30,29 @@ export const FORMULA_TABLE: { water: number; formula: number }[] = [
   { water: 210, formula: 240 },
 ];
 
+/** Convert prepared-formula ml back to water ml (inverse of waterToMilk). */
+export function milkToWater(milkMl: number): number {
+  const t = FORMULA_TABLE;
+  // Build inverse table
+  const inv = t.map(p => ({ milk: p.formula, water: p.water }));
+  if (milkMl <= inv[0].milk) {
+    const s = (inv[1].water - inv[0].water) / (inv[1].milk - inv[0].milk);
+    return inv[0].water + s * (milkMl - inv[0].milk);
+  }
+  const last = inv.length - 1;
+  if (milkMl >= inv[last].milk) {
+    const s = (inv[last].water - inv[last-1].water) / (inv[last].milk - inv[last-1].milk);
+    return inv[last].water + s * (milkMl - inv[last].milk);
+  }
+  for (let i = 0; i < last; i++) {
+    if (milkMl >= inv[i].milk && milkMl <= inv[i+1].milk) {
+      const f = (milkMl - inv[i].milk) / (inv[i+1].milk - inv[i].milk);
+      return inv[i].water + f * (inv[i+1].water - inv[i].water);
+    }
+  }
+  return milkMl * (90 / 100);
+}
+
 /** Convert a logged water-volume to prepared-formula volume using interpolation. */
 export function waterToMilk(waterMl: number): number {
   const t = FORMULA_TABLE;
