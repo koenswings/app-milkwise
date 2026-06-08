@@ -31,7 +31,7 @@ function NumericView({ settings, derived }: Props) {
       {/* Numbers full width — same layout as Status */}
       <div className="flex items-baseline justify-between mb-2">
         <span className="text-3xl font-bold leading-none tabular-nums text-slate-100">{Math.round(derived.dailyTargetMl)}<span className="text-base font-normal ml-0.5">ml</span></span>
-        <span className="text-3xl font-bold leading-none tabular-nums text-blue-300">{targetBottles.toFixed(1)}<span className="text-base font-normal text-slate-500 ml-0.5">× {Math.round(milkPerBottle)}ml bottles</span></span>
+        <span className="text-3xl font-bold leading-none tabular-nums text-blue-300">{targetBottles.toFixed(1)}<span className="text-base font-normal text-slate-500 ml-0.5">× {settings.standardBottleVolume}ml bottles</span></span>
       </div>
       <div className="text-sm text-slate-400 mb-1">{settings.standardBottleVolume} ml · every {intervalLabel}</div>
       <div className="text-xs text-slate-600 mb-2">{settings.weightKg} kg × {settings.mlPerKgPerDay} ml/kg</div>

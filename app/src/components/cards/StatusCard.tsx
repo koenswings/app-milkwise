@@ -38,8 +38,8 @@ function statusText(pct: number, y: number, r: number) {
   return d <= r ? "slightly behind" : "behind ⚠️";
 }
 
-function Panel({ label, ml, pct, milkPerBottle, y, r, onExplain, feeds24h }:
-  { label: string; ml: number; pct: number; milkPerBottle: number; y: number; r: number; onExplain: () => void; feeds24h: Feed[] }) {
+function Panel({ label, ml, pct, milkPerBottle, standardBottleVolume, y, r, onExplain, feeds24h }:
+  { label: string; ml: number; pct: number; milkPerBottle: number; standardBottleVolume: number; y: number; r: number; onExplain: () => void; feeds24h: Feed[] }) {
 
   const bottles = ml / milkPerBottle;
 
@@ -62,7 +62,7 @@ function Panel({ label, ml, pct, milkPerBottle, y, r, onExplain, feeds24h }:
       {/* Numbers: ml left, bottles right, same font */}
       <div className="flex items-baseline justify-between mb-1">
         <span className={`text-3xl font-bold leading-none tabular-nums ${colorClass(pct, y, r)}`}>{Math.round(ml)}<span className="text-base font-normal ml-0.5">ml</span></span>
-        <span className={`text-3xl font-bold leading-none tabular-nums ${colorClass(pct, y, r)}`}>{bottles.toFixed(1)}<span className="text-base font-normal ml-0.5">× {Math.round(milkPerBottle)}ml bottles</span></span>
+        <span className={`text-3xl font-bold leading-none tabular-nums ${colorClass(pct, y, r)}`}>{bottles.toFixed(1)}<span className="text-base font-normal ml-0.5">× {standardBottleVolume}ml bottles</span></span>
       </div>
       <div className={`text-sm mb-2 ${colorClass(pct, y, r)}`}>{Math.round(pct)}% · {statusText(pct, y, r)}</div>
 
@@ -138,6 +138,128 @@ function SpotlightView({ smoothedMl, smoothedPct, strict24h, strictPct, yellowTh
   );
 }
 
+// ── Option C: Centre-anchored bidirectional bar ─────────────────────────────────────
+function BiDirectionalView({ smoothedMl, smoothedPct, dailyTargetMl, yellowThresholdPct: y, redThresholdPct: r, onSmoothedExplain }: Props) {
+  const diff = smoothedPct - 100;
+  const absDiff = Math.abs(diff);
+  const isOver = diff > 0;
+  // bar fills from centre outward, max at ±40%
+  const barPct = Math.min(absDiff / 40 * 50, 50); // 0-50% each side
+  const barColor = absDiff <= y ? '#4ade80' : isOver ? '#f97316' : '#60a5fa';
+  const surplusMl = Math.round(Math.abs(smoothedMl - dailyTargetMl));
+
+  return (
+    <div className="rounded-xl border border-slate-700 p-3">
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-xs text-slate-400 uppercase tracking-wide">Balance</span>
+        <button onClick={onSmoothedExplain} className="w-4 h-4 rounded-full bg-slate-600 text-slate-300 text-xs font-bold flex items-center justify-center">?</button>
+      </div>
+      {/* Status label */}
+      <div className="text-center mb-3">
+        {absDiff <= y
+          ? <span className="text-2xl font-bold text-green-400">✓ On target</span>
+          : isOver
+            ? <span className="text-2xl font-bold text-orange-400">↑ Overfed {surplusMl} ml</span>
+            : <span className="text-2xl font-bold text-blue-400">↓ Underfed {surplusMl} ml</span>}
+        <div className="text-xs text-slate-500 mt-0.5">{Math.round(smoothedPct)}% of target</div>
+      </div>
+      {/* Bidirectional bar */}
+      <div className="relative h-5 bg-slate-700 rounded-full overflow-hidden">
+        {/* Green centre band */}
+        <div className="absolute inset-y-0 bg-green-900/40" style={{ left: '45%', right: '45%' }} />
+        {/* Fill from centre */}
+        {isOver
+          ? <div className="absolute inset-y-0 rounded-r-full" style={{ left: '50%', width: `${barPct}%`, backgroundColor: barColor }} />
+          : <div className="absolute inset-y-0 rounded-l-full" style={{ right: '50%', width: `${barPct}%`, backgroundColor: barColor }} />}
+        {/* Centre line */}
+        <div className="absolute inset-y-0 w-0.5 bg-white/50" style={{ left: '50%' }} />
+        <div className="absolute inset-0 flex items-center justify-center text-xs font-bold text-white drop-shadow">
+          {diff > 0 ? '+' : ''}{Math.round(diff)}%
+        </div>
+      </div>
+      <div className="flex justify-between text-xs text-slate-600 mt-0.5">
+        <span>← underfed</span><span>overfed →</span>
+      </div>
+    </div>
+  );
+}
+
+// ── Option D: Thermometer / gauge ───────────────────────────────────────────────────
+function ThermometerView({ smoothedMl, smoothedPct, dailyTargetMl, yellowThresholdPct: y, redThresholdPct: r, onSmoothedExplain }: Props) {
+  const diff = smoothedPct - 100;
+  const absDiff = Math.abs(diff);
+  const isOver = diff > 0;
+  const surplusMl = Math.round(Math.abs(smoothedMl - dailyTargetMl));
+  // Gauge: 60%=bottom, 140%=top. Target at centre.
+  const fillHeight = Math.min(Math.max((smoothedPct - 60) / 80 * 100, 0), 100);
+  const fillColor = absDiff <= y ? '#4ade80' : isOver ? '#f97316' : '#60a5fa';
+
+  return (
+    <div className="rounded-xl border border-slate-700 p-3">
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-xs text-slate-400 uppercase tracking-wide">Intake gauge</span>
+        <button onClick={onSmoothedExplain} className="w-4 h-4 rounded-full bg-slate-600 text-slate-300 text-xs font-bold flex items-center justify-center">?</button>
+      </div>
+      <div className="flex items-end gap-4">
+        {/* Vertical gauge */}
+        <div className="flex flex-col items-center">
+          <span className="text-xs text-orange-400 mb-0.5">↑ over</span>
+          <div className="relative w-8 rounded-t-lg border-2 border-slate-500 overflow-hidden" style={{ height: 80 }}>
+            <div className="absolute bottom-0 left-0 right-0 transition-all" style={{ height: `${fillHeight}%`, backgroundColor: fillColor }} />
+            {/* Target line at 50% height */}
+            <div className="absolute left-0 right-0 h-0.5 bg-white/60" style={{ bottom: '50%' }} />
+          </div>
+          <span className="text-xs text-blue-400 mt-0.5">↓ under</span>
+        </div>
+        {/* Reading */}
+        <div>
+          <div className={`text-3xl font-black tabular-nums`} style={{ color: fillColor }}>
+            {diff > 0 ? '+' : ''}{Math.round(diff)}%
+          </div>
+          <div className="text-xs text-slate-400">{Math.round(smoothedPct)}% of target</div>
+          <div className={`text-sm font-semibold mt-1 ${isOver ? 'text-orange-400' : absDiff <= y ? 'text-green-400' : 'text-blue-400'}`}>
+            {absDiff <= y ? '✓ On target' : isOver ? `↑ +${surplusMl} ml over` : `↓ ${surplusMl} ml under`}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Option E: Emoji face + deficit/surplus statement ────────────────────────────────
+function EmojiBalanceView({ smoothedMl, smoothedPct, dailyTargetMl, yellowThresholdPct: y, redThresholdPct: r, onSmoothedExplain }: Props) {
+  const diff = smoothedPct - 100;
+  const absDiff = Math.abs(diff);
+  const isOver = diff > 0;
+  const surplusMl = Math.round(Math.abs(smoothedMl - dailyTargetMl));
+
+  let emoji = '😄', headline = '', sub = '', color = 'text-green-400';
+  if (absDiff <= y) {
+    emoji = '😄'; headline = 'Perfect balance'; sub = 'Right on target.'; color = 'text-green-400';
+  } else if (isOver && absDiff > r) {
+    emoji = '🤬'; headline = `Too full: +${surplusMl} ml`; sub = 'Next feed can wait a bit.'; color = 'text-orange-400';
+  } else if (isOver) {
+    emoji = '😌'; headline = `A little full: +${surplusMl} ml`; sub = 'All good — just watch.'; color = 'text-amber-400';
+  } else if (absDiff > r) {
+    emoji = '😢'; headline = `Short: −${surplusMl} ml`; sub = 'Offer a feed soon.'; color = 'text-blue-400';
+  } else {
+    emoji = '😕'; headline = `A little short: −${surplusMl} ml`; sub = 'Keep an eye on it.'; color = 'text-sky-400';
+  }
+
+  return (
+    <div className="rounded-xl border border-slate-700 p-3 text-center">
+      <div className="flex items-center justify-between mb-1">
+        <span className="text-xs text-slate-400 uppercase tracking-wide">Status</span>
+        <button onClick={onSmoothedExplain} className="w-4 h-4 rounded-full bg-slate-600 text-slate-300 text-xs font-bold flex items-center justify-center">?</button>
+      </div>
+      <div className="text-5xl mb-2">{emoji}</div>
+      <div className={`text-xl font-bold ${color}`}>{headline}</div>
+      <div className="text-slate-400 text-sm mt-0.5">{sub}</div>
+      <div className="text-xs text-slate-500 mt-1">{Math.round(smoothedMl)} ml · {Math.round(smoothedPct)}%</div>
+    </div>
+  );
+}
+
 export default function StatusCard(props: Props) {
   const { strict24h, strictPct, smoothedMl, smoothedPct, standardBottleVolume, yellowThresholdPct: y, redThresholdPct: r } = props;
   const milkPerBottle = waterToMilk(standardBottleVolume);
@@ -150,13 +272,16 @@ export default function StatusCard(props: Props) {
       className="mb-2"
       views={[
         <Panel key="smoothed" label="STATUS LAST 24H" ml={smoothedMl} pct={smoothedPct}
-          milkPerBottle={milkPerBottle} y={y} r={r}
+          milkPerBottle={milkPerBottle} standardBottleVolume={standardBottleVolume} y={y} r={r}
           onExplain={props.onSmoothedExplain} feeds24h={feeds24h} />,
         <Panel key="strict" label="Strict 24h" ml={strict24h} pct={strictPct}
-          milkPerBottle={milkPerBottle} y={y} r={r}
+          milkPerBottle={milkPerBottle} standardBottleVolume={standardBottleVolume} y={y} r={r}
           onExplain={props.onStrictExplain} feeds24h={feeds24h} />,
         <ProgressView key="progress" {...props} />,
         <SpotlightView key="spotlight" {...props} />,
+        <BiDirectionalView key="bidir" {...props} />,
+        <ThermometerView key="thermo" {...props} />,
+        <EmojiBalanceView key="emoji" {...props} />,
       ]}
     />
   );
