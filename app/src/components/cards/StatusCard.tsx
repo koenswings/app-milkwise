@@ -101,9 +101,9 @@ function PanelWithGauge({ label, ml, pct, milkPerBottle, dailyTargetMl, y, r, on
         <button onClick={onExplain} className="w-5 h-5 rounded-full bg-slate-600 hover:bg-slate-500 text-slate-300 text-xs font-bold flex items-center justify-center leading-none">?</button>
       </div>
 
-      <div className="flex items-start gap-2">
-        {/* Left: ml + pictograms */}
-        <div className="flex-1">
+      <div className="flex items-start">
+        {/* Left: ml + pictograms — 62% width */}
+        <div style={{ width: '62%' }}>
           <div className={`text-3xl font-bold leading-none tabular-nums mb-1 ${colorClass(pct, y, r)}`}>{Math.round(ml)}<span className="text-base font-normal ml-0.5">ml</span></div>
           <div className={`text-sm mb-2 ${colorClass(pct, y, r)}`}>{Math.round(pct)}% · {statusText(pct, y, r)}</div>
           <div className="flex flex-wrap items-end gap-1">
@@ -116,8 +116,8 @@ function PanelWithGauge({ label, ml, pct, milkPerBottle, dailyTargetMl, y, r, on
           </div>
         </div>
 
-        {/* Right: vertical gauge — centred in right quarter */}
-        <div className="flex flex-col items-center flex-shrink-0 mx-3">
+        {/* Right: vertical gauge — fills remaining 38%, centred */}
+        <div className="flex flex-col items-center" style={{ width: '38%' }}>
           <span className="text-xs text-orange-400 mb-0.5">↑</span>
           <div className="relative w-7 rounded-t-lg border-2 border-slate-500 overflow-hidden" style={{ height: 72 }}>
             <div className="absolute bottom-0 left-0 right-0 transition-all" style={{ height: `${fillHeight}%`, backgroundColor: fillColor }} />
