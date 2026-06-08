@@ -13,6 +13,7 @@ const DEFAULT_SETTINGS: Settings = {
   weightKg: 6.27,
   mlPerKgPerDay: 150,
   standardBottleVolume: 90,
+  displayBottleVolumeWater: 90,
   yellowThresholdPct: 5,
   redThresholdPct: 10,
   timeFormat: '24h' as const,

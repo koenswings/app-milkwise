@@ -122,52 +122,42 @@ export function feedsWithCredit(
 }
 
 /**
- * Formula S — Surplus/Deficit next feed predictor.
- * Mathematically equivalent to Formula E3 (incremental, no floor, initial pool = milkPerBottle).
+ * Next bottle predictor — Option A (design doc: next-session-predictor-design.md)
  *
- * Proof of equivalence:
- *   balance_E3 = milkPerBottle + (totalMilk24h − hourlyRate × 24)
- *              = milkPerBottle + surplus
- *              = balance_S
+ * Standard: when does the energy from the last logged bottle run out?
+ *   standardNext = lastFeed.timestamp + waterToMilk(lastFeed.volume) / hourlyRate
  *
- * Energy model: the baby starts each 24h period with one bottle in reserve.
- * Feeds top up the reserve; the body burns at hourlyRate continuously.
- * Reserve can go positive (overfed carry-over) or negative (energy deficit
- * drawn from stored fat). rawNext = when the reserve returns to zero.
- * A positive balance → later feed; negative balance → earlier feed.
+ * Adjusted: standard + correction for 24h over/underfeeding, capped at ±maxCorrectionPct%
+ *   surplus      = smoothedTotal − dailyTargetMl
+ *   correction   = surplus / hourlyRate (capped)
+ *   adjustedNext = standardNext + clampedCorrection
  *
- * Correction is capped at ±maxCorrectionPct% of the ideal interval.
+ * The parent logs the START time of the bottle and the TOTAL milk given.
+ * The timestamp on the feed record is the start of the session.
  */
 export function nextFeedTime(
   feeds: Feed[],
   hourlyRate: number,
   smoothedTotal: number,
   dailyTargetMl: number,
-  settings: Pick<Settings, 'standardBottleVolume' | 'maxCorrectionPct'>
+  settings: Pick<Settings, 'maxCorrectionPct'>
 ): NextFeedResult | null {
   if (feeds.length === 0) return null;
 
   const lastFeed = feeds.reduce((a, b) => (a.timestamp > b.timestamp ? a : b));
-  const milkPerBottle = waterToMilk(settings.standardBottleVolume);
-  const idealIntervalMs = (milkPerBottle / hourlyRate) * 3_600_000;
-  const maxCorrectionMs = idealIntervalMs * (settings.maxCorrectionPct / 100);
+  const lastMilkMl = waterToMilk(lastFeed.volume);  // milk ml from last bottle
+  const standardIntervalMs = (lastMilkMl / hourlyRate) * 3_600_000;
+  const standardNext = lastFeed.timestamp + standardIntervalMs;
+  const maxCorrectionMs = standardIntervalMs * (settings.maxCorrectionPct / 100);
 
-  // Formula S: balance = milkPerBottle + surplus
-  const surplus = smoothedTotal - dailyTargetMl; // positive = overfed, negative = underfed
-  const balance = milkPerBottle + surplus;
+  const surplus = smoothedTotal - dailyTargetMl;
+  const rawCorrectionMs = (surplus / hourlyRate) * 3_600_000;
+  const clampedCorrection = Math.max(-maxCorrectionMs, Math.min(maxCorrectionMs, rawCorrectionMs));
 
-  // rawNext = lastFeed + balance / hourlyRate
-  const idealNext = lastFeed.timestamp + idealIntervalMs;
-  const rawNext = lastFeed.timestamp + (balance / hourlyRate) * 3_600_000;
+  const timestamp = standardNext + clampedCorrection;
+  const capped = Math.abs(clampedCorrection - rawCorrectionMs) > 1;
 
-  // Clamp correction to ±maxCorrectionPct% of ideal interval
-  const clamped = Math.max(
-    idealNext - maxCorrectionMs,
-    Math.min(idealNext + maxCorrectionMs, rawNext)
-  );
-  const capped = Math.abs(clamped - rawNext) > 1;
-
-  return { timestamp: clamped, balanceMl: Math.round(balance), capped };
+  return { timestamp, balanceMl: Math.round(surplus), capped };
 }
 
 export function avgIntervalHours(feeds: Feed[]): number | null {

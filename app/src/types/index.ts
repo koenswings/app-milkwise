@@ -8,11 +8,12 @@ export interface Feed {
 export interface Settings {
   weightKg: number;
   mlPerKgPerDay: number;
-  standardBottleVolume: number;
-  yellowThresholdPct: number;     // default 5 — within this % of target = on track
-  redThresholdPct: number;        // default 10 — beyond this % of target = seriously off
-  timeFormat: '24h' | '12h';     // default '24h'
-  maxCorrectionPct: number;       // default 25 — max correction = ±this % of ideal interval
+  standardBottleVolume: number;       // configured standard bottle (water ml) for Settings page
+  displayBottleVolumeWater: number;   // bottle size (water ml) used to express bottles in Target/Status cards
+  yellowThresholdPct: number;         // default 5
+  redThresholdPct: number;            // default 10
+  timeFormat: '24h' | '12h';
+  maxCorrectionPct: number;           // default 25
 }
 
 export interface NextFeedResult {

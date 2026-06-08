@@ -15,6 +15,7 @@ export default function SettingsPage() {
     yellowThresholdPct: 5,
     redThresholdPct: 10,
     timeFormat: '24h',
+    displayBottleVolumeWater: 90,
     maxCorrectionPct: 25,
   });
   const [saved, setSaved] = useState(false);
@@ -172,6 +173,23 @@ export default function SettingsPage() {
           />
           <p className="text-xs text-slate-500 mt-2">
             Within ±{settings.yellowThresholdPct}% of target = on track. Beyond ±{settings.redThresholdPct}% = seriously off.
+          </p>
+        </div>
+
+        <div className="bg-slate-800 rounded-xl p-4">
+          <label className="block text-sm text-slate-400 mb-1">Display bottle size (ml water)</label>
+          <input
+            type="number"
+            value={fieldValue("displayBottleVolumeWater")}
+            onChange={(e) => handleChange("displayBottleVolumeWater", e.target.value)}
+            onBlur={() => handleBlur("displayBottleVolumeWater")}
+            step="30"
+            min="30"
+            max="240"
+            className="w-full bg-slate-700 border border-slate-600 rounded-lg px-4 py-3 text-slate-100 text-lg focus:outline-none focus:border-blue-500"
+          />
+          <p className="text-xs text-slate-500 mt-2">
+            Bottle size used to express the daily target and status in the dashboard cards. Default: 90 ml.
           </p>
         </div>
 

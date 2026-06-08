@@ -53,7 +53,6 @@ export default function Dashboard() {
   const [now, setNow] = useState(Date.now());
   const [showStrictExplainer, setShowStrictExplainer] = useState(false);
   const [showSmoothedExplainer, setShowSmoothedExplainer] = useState(false);
-  const [nextBottleSize, setNextBottleSize] = useState<number>(90); // default 90ml, never null
 
   const load = useCallback(async () => {
     // One-time migration of any existing localStorage data to the server
@@ -113,12 +112,11 @@ export default function Dashboard() {
   const strict24hPct = (strict24h / derived.dailyTargetMl) * 100;
   const smoothedPct = (smoothedMl / derived.dailyTargetMl) * 100;
 
-  const effectiveBottleSize = nextBottleSize;
-  const nextFeedResult = nextFeedTime(feeds, derived.hourlyRate, smoothedMl, derived.dailyTargetMl, { ...settings, standardBottleVolume: effectiveBottleSize });
+  const nextFeedResult = nextFeedTime(feeds, derived.hourlyRate, smoothedMl, derived.dailyTargetMl, settings);
   const nextFeed = nextFeedResult?.timestamp ?? null;
-  // Standard next = lastFeed + interval for selected bottle
-  const nextFeedMilk = waterToMilk(effectiveBottleSize);
-  const standardNext = lastFeed ? lastFeed.timestamp + (nextFeedMilk / derived.hourlyRate) * 3_600_000 : null;
+  // Standard next = lastFeed + decay of last bottle
+  const lastMilkMl = lastFeed ? waterToMilk(lastFeed.volume) : 0;
+  const standardNext = lastFeed ? lastFeed.timestamp + (lastMilkMl / derived.hourlyRate) * 3_600_000 : null;
 
   return (
     <div className="max-w-lg mx-auto px-4 pt-6 pb-24">
@@ -135,35 +133,20 @@ export default function Dashboard() {
         ➕ Log Feed
       </Link>
 
-      {/* Next bottle size selector — sets standard bottle for all calculations */}
-      <div className="flex items-center gap-2 mb-3">
-        <span className="text-xs text-slate-400">Next bottle:</span>
-        {[60, 90, 120].map((size) => (
-          <button
-            key={size}
-            onClick={() => setNextBottleSize(size)}
-            className={`px-3 py-1 rounded-lg text-sm font-semibold transition-colors ${
-              effectiveBottleSize === size
-                ? 'bg-blue-600 text-white'
-                : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
-            }`}
-          >
-            {size} ml
-          </button>
-        ))}
-      </div>
+      {/* Daily target — uses displayBottleVolumeWater from settings */}
+      <DailyTargetCard
+        settings={{ ...settings, standardBottleVolume: settings.displayBottleVolumeWater }}
+        derived={deriveSettings({ ...settings, standardBottleVolume: settings.displayBottleVolumeWater })}
+      />
 
-      {/* Daily target — swipeable, uses effectiveBottleSize */}
-      <DailyTargetCard settings={{ ...settings, standardBottleVolume: effectiveBottleSize }} derived={deriveSettings({ ...settings, standardBottleVolume: effectiveBottleSize })} />
-
-      {/* 24h status — swipeable full width, uses effectiveBottleSize */}
+      {/* 24h status — uses displayBottleVolumeWater */}
       <StatusCard
         strict24h={strict24h}
         strictPct={strict24hPct}
         smoothedMl={smoothedMl}
         smoothedPct={smoothedPct}
         dailyTargetMl={derived.dailyTargetMl}
-        standardBottleVolume={effectiveBottleSize}
+        standardBottleVolume={settings.displayBottleVolumeWater}
         yellowThresholdPct={settings.yellowThresholdPct}
         redThresholdPct={settings.redThresholdPct}
         onStrictExplain={() => setShowStrictExplainer(true)}

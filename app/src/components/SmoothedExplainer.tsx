@@ -49,7 +49,7 @@ export default function SmoothedExplainer({ onClose, hourlyRate, standardBottleV
       >
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-bold text-slate-100">How is Smoothed % calculated?</h2>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-200 text-2xl leading-none">×</button>
+          <button onClick={onClose} className="text-blue-400 hover:text-blue-300 text-sm">← Back</button>
         </div>
 
         <div className="space-y-5 text-base text-slate-300 leading-relaxed mt-2">
@@ -247,12 +247,7 @@ export default function SmoothedExplainer({ onClose, hourlyRate, standardBottleV
           </a>
         </div>
 
-        <button
-          onClick={onClose}
-          className="mt-6 w-full bg-slate-700 hover:bg-slate-600 text-slate-200 font-medium py-3 rounded-xl transition-colors"
-        >
-          Got it
-        </button>
+        <button onClick={onClose} className="mt-6 w-full text-center text-blue-400 hover:text-blue-300 text-sm py-2">← Back</button>
       </div>
     </div>
   );

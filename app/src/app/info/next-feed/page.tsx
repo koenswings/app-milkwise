@@ -39,27 +39,28 @@ export default function NextFeedInfoPage() {
       const smoothedAt = lastFeed.timestamp;
       const { totalMl: smoothedTotal } = smoothedEffective(feeds, derived.hourlyRate, settings.standardBottleVolume, smoothedAt);
 
-      const milkPerBottle = waterToMilk(settings.standardBottleVolume);
-      const idealIntervalMs = (milkPerBottle / derived.hourlyRate) * 3_600_000;
-      const maxCorrectionMs = idealIntervalMs * (settings.maxCorrectionPct / 100);
+      // New algorithm: standard = lastFeed + waterToMilk(lastFeed.volume) / hourlyRate
+      const lastMilkMl = waterToMilk(lastFeed.volume);
+      const standardIntervalMs = (lastMilkMl / derived.hourlyRate) * 3_600_000;
+      const standardNext = lastFeed.timestamp + standardIntervalMs;
+      const maxCorrectionMs = standardIntervalMs * (settings.maxCorrectionPct / 100);
 
       const surplus = smoothedTotal - derived.dailyTargetMl;
-      const balance = milkPerBottle + surplus;
-      const idealNext = lastFeed.timestamp + idealIntervalMs;
-      const rawNext = lastFeed.timestamp + (balance / derived.hourlyRate) * 3_600_000;
-      const clamped = Math.max(idealNext - maxCorrectionMs, Math.min(idealNext + maxCorrectionMs, rawNext));
-      const capped = Math.abs(clamped - rawNext) > 1;
+      const rawCorrectionMs = (surplus / derived.hourlyRate) * 3_600_000;
+      const clampedCorrection = Math.max(-maxCorrectionMs, Math.min(maxCorrectionMs, rawCorrectionMs));
+      const adjustedTs = standardNext + clampedCorrection;
+      const capped = Math.abs(clampedCorrection - rawCorrectionMs) > 1;
 
       setLive({
         surplusMl: surplus,
-        balance,
-        rawShiftMin: Math.round((rawNext - idealNext) / 60_000),
-        clampedShiftMin: Math.round((clamped - idealNext) / 60_000),
+        balance: surplus,
+        rawShiftMin: Math.round(rawCorrectionMs / 60_000),
+        clampedShiftMin: Math.round(clampedCorrection / 60_000),
         capped,
-        adjustedTs: clamped,
-        idealIntervalMin: Math.round(idealIntervalMs / 60_000),
+        adjustedTs,
+        idealIntervalMin: Math.round(standardIntervalMs / 60_000),
         maxCorrectionMin: Math.round(maxCorrectionMs / 60_000),
-        standardBottleVolume: settings.standardBottleVolume,
+        standardBottleVolume: lastFeed.volume,
         timeFormat: settings.timeFormat,
       });
     })();
@@ -85,9 +86,9 @@ export default function NextFeedInfoPage() {
               </span>
             </div>
             <div className="flex justify-between">
-              <span className="text-slate-400">Energy balance</span>
-              <span className={`font-semibold tabular-nums ${live.balance >= 0 ? 'text-slate-200' : 'text-blue-400'}`}>
-                {live.balance >= 0 ? '+' : ''}{Math.round(live.balance)} ml
+              <span className="text-slate-400">24h surplus</span>
+              <span className={`font-semibold tabular-nums ${live.surplusMl >= 0 ? 'text-yellow-400' : 'text-blue-400'}`}>
+                {live.surplusMl >= 0 ? '+' : ''}{Math.round(live.surplusMl)} ml
               </span>
             </div>
             <div className="flex justify-between">
@@ -125,12 +126,14 @@ export default function NextFeedInfoPage() {
         The adjusted time is based on the baby's <strong>energy balance</strong> — how much
         energy she has stored relative to ideal:
       </p>
-      <div className="bg-slate-800 rounded-lg p-3 font-mono text-xs text-slate-300 mb-3">
-        {`surplus     = smoothedTotal − dailyTarget\nbalance     = milkPerBottle + surplus\nadjusted    = lastFeed + balance / hourlyRate`}
-      </div>
+      <div className="bg-slate-800 rounded-lg p-3 font-mono text-xs text-slate-300 mb-3 whitespace-pre">{`standard   = lastFeed + waterToMilk(lastFeed.volume) / hourlyRate
+
+surplus    = smoothedTotal − dailyTarget
+correction = surplus / hourlyRate  (capped ±maxCorrectionPct%)
+adjusted   = standard + correction`}</div>
       <ul className="list-disc pl-5 space-y-1.5 mb-4 text-slate-400">
-        <li><strong className="text-slate-300">surplus &gt; 0</strong> (overfed) → balance &gt; one bottle → adjusted later than standard</li>
-        <li><strong className="text-slate-300">surplus &lt; 0</strong> (underfed) → balance &lt; one bottle → adjusted earlier than standard</li>
+        <li><strong className="text-slate-300">surplus &gt; 0</strong> (overfed) → correction &gt; 0 → adjusted later than standard</li>
+        <li><strong className="text-slate-300">surplus &lt; 0</strong> (underfed) → correction &lt; 0 → adjusted earlier than standard</li>
         <li><strong className="text-slate-300">surplus = 0</strong> (on target) → adjusted = standard</li>
       </ul>
 

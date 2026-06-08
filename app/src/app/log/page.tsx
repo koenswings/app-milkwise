@@ -78,7 +78,11 @@ export default function LogPage() {
 
   return (
     <div className="max-w-lg mx-auto px-4 pt-6 pb-24">
-      <h1 className="text-2xl font-bold text-slate-100 mb-6">➕ Log Feed</h1>
+      <h1 className="text-2xl font-bold text-slate-100 mb-2">➕ Log Feed</h1>
+      <div className="bg-slate-800 rounded-xl p-3 mb-4 text-xs text-slate-400 leading-relaxed">
+        <p className="mb-1">Log <strong className="text-slate-300">when you started</strong> giving the bottle and the <strong className="text-slate-300">total milk given</strong> in that sitting.</p>
+        <p>If the baby didn&apos;t finish in one go, give the total across all steps at the end — but use the <strong className="text-slate-300">start time</strong> of the first step.</p>
+      </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* Quick volume buttons */}
@@ -104,7 +108,7 @@ export default function LogPage() {
 
         {/* Volume input */}
         <div>
-          <label className="block text-sm text-slate-400 mb-1">Volume (ml)</label>
+          <label className="block text-sm text-slate-400 mb-1">Total milk given (ml)</label>
           <input
             type="number"
             value={volume}
