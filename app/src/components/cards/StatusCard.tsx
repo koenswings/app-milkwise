@@ -62,7 +62,7 @@ function Panel({ label, ml, pct, milkPerBottle, y, r, onExplain, feeds24h }:
       {/* Numbers: ml left, bottles right, same font */}
       <div className="flex items-baseline justify-between mb-1">
         <span className={`text-3xl font-bold leading-none tabular-nums ${colorClass(pct, y, r)}`}>{Math.round(ml)}<span className="text-base font-normal ml-0.5">ml</span></span>
-        <span className={`text-3xl font-bold leading-none tabular-nums ${colorClass(pct, y, r)}`}>{bottles.toFixed(1)}<span className="text-base font-normal ml-0.5">bottles</span></span>
+        <span className={`text-3xl font-bold leading-none tabular-nums ${colorClass(pct, y, r)}`}>{bottles.toFixed(1)}<span className="text-base font-normal ml-0.5">× {Math.round(milkPerBottle)}ml bottles</span></span>
       </div>
       <div className={`text-sm mb-2 ${colorClass(pct, y, r)}`}>{Math.round(pct)}% · {statusText(pct, y, r)}</div>
 

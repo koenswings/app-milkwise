@@ -131,19 +131,7 @@ export default function SettingsPage() {
           />
         </div>
 
-        <div className="bg-slate-800 rounded-xl p-4">
-          <label className="block text-sm text-slate-400 mb-1">Standard bottle volume (ml)</label>
-          <input
-            type="number"
-            value={fieldValue("standardBottleVolume")}
-            onChange={(e) => handleChange("standardBottleVolume", e.target.value)}
-            onBlur={() => handleBlur("standardBottleVolume")}
-            step="5"
-            min="30"
-            max="300"
-            className="w-full bg-slate-700 border border-slate-600 rounded-lg px-4 py-3 text-slate-100 text-lg focus:outline-none focus:border-blue-500"
-          />
-        </div>
+
 
         <div className="bg-slate-800 rounded-xl p-4">
           <label className="block text-sm text-slate-400 mb-1">On-track zone (±%)</label>
@@ -177,19 +165,25 @@ export default function SettingsPage() {
         </div>
 
         <div className="bg-slate-800 rounded-xl p-4">
-          <label className="block text-sm text-slate-400 mb-1">Display bottle size (ml water)</label>
-          <input
-            type="number"
-            value={fieldValue("displayBottleVolumeWater")}
-            onChange={(e) => handleChange("displayBottleVolumeWater", e.target.value)}
-            onBlur={() => handleBlur("displayBottleVolumeWater")}
-            step="30"
-            min="30"
-            max="240"
-            className="w-full bg-slate-700 border border-slate-600 rounded-lg px-4 py-3 text-slate-100 text-lg focus:outline-none focus:border-blue-500"
-          />
+          <label className="block text-sm text-slate-400 mb-2">Display bottle size</label>
+          <div className="flex gap-2">
+            {[60, 90, 120].map((size) => (
+              <button
+                key={size}
+                type="button"
+                onClick={() => setSettings((prev) => ({ ...prev, displayBottleVolumeWater: size }))}
+                className={`flex-1 py-3 rounded-lg font-semibold transition-colors ${
+                  settings.displayBottleVolumeWater === size
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                }`}
+              >
+                {size} ml
+              </button>
+            ))}
+          </div>
           <p className="text-xs text-slate-500 mt-2">
-            Bottle size used to express the daily target and status in the dashboard cards. Default: 90 ml.
+            Bottle size used to express the number of bottles in the dashboard cards.
           </p>
         </div>
 

@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { addFeed, getFeeds, generateId, getSettings } from "@/lib/store";
 import { formatDateTime } from "@/lib/formatTime";
+import { waterToMilk } from "@/lib/calculations";
 import { Feed, Settings } from "@/types";
 import BottomNav from "@/components/BottomNav";
 import { useRouter } from "next/navigation";
@@ -26,7 +27,8 @@ export default function LogPage() {
   const router = useRouter();
   const [date, setDate] = useState(nowDateString());
   const [time, setTime] = useState(nowTimeString());
-  const [volume, setVolume] = useState<string>("90");
+  const [bottleSize, setBottleSize] = useState<number>(90); // selected bottle size in water ml
+  const [volume, setVolume] = useState<string>(String(Math.round(waterToMilk(90)))); // milk ml
   const [saving, setSaving] = useState(false);
   const [recentFeeds, setRecentFeeds] = useState<Feed[]>([]);
   const [settings, setSettings] = useState<Settings | null>(null);
@@ -85,17 +87,20 @@ export default function LogPage() {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
-        {/* Quick volume buttons */}
+        {/* Bottle size selector */}
         <div>
-          <label className="block text-sm text-slate-400 mb-2">Quick volume</label>
+          <label className="block text-sm text-slate-400 mb-2">Bottle size (water ml)</label>
           <div className="flex gap-2">
             {QUICK_VOLUMES.map((v) => (
               <button
                 key={v}
                 type="button"
-                onClick={() => setVolume(String(v))}
+                onClick={() => {
+                  setBottleSize(v);
+                  setVolume(String(Math.round(waterToMilk(v))));
+                }}
                 className={`flex-1 py-3 rounded-lg font-semibold transition-colors ${
-                  volume === String(v)
+                  bottleSize === v
                     ? "bg-blue-600 text-white"
                     : "bg-slate-700 text-slate-300 hover:bg-slate-600"
                 }`}
@@ -104,11 +109,14 @@ export default function LogPage() {
               </button>
             ))}
           </div>
+          <p className="text-xs text-slate-500 mt-1">
+            {bottleSize} ml water → {Math.round(waterToMilk(bottleSize))} ml milk
+          </p>
         </div>
 
-        {/* Volume input */}
+        {/* Milk amount — pre-filled, editable if baby didn’t finish */}
         <div>
-          <label className="block text-sm text-slate-400 mb-1">Total milk given (ml)</label>
+          <label className="block text-sm text-slate-400 mb-1">Total milk given (ml) — edit if baby didn’t finish</label>
           <input
             type="number"
             value={volume}
