@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { getFeeds, getSettings, migrateFromLocalStorage } from "@/lib/store";
+import { getFeeds, getSettings, getWeights, addWeight, migrateFromLocalStorage } from "@/lib/store";
+import { WeightEntry } from "@/lib/weights";
 import {
   deriveSettings,
   strict24hTotal,
@@ -53,14 +54,19 @@ export default function Dashboard() {
   const [now, setNow] = useState(Date.now());
   const [showStrictExplainer, setShowStrictExplainer] = useState(false);
   const [showSmoothedExplainer, setShowSmoothedExplainer] = useState(false);
+  const [weights, setWeights] = useState<WeightEntry[]>([]);
+  const [showWeightModal, setShowWeightModal] = useState(false);
+  const [newWeightKg, setNewWeightKg] = useState('');
+  const [newWeightTime, setNewWeightTime] = useState('');
 
   const load = useCallback(async () => {
     // One-time migration of any existing localStorage data to the server
     await migrateFromLocalStorage();
-    const [f, s] = await Promise.all([getFeeds(), getSettings()]);
+    const [f, s, w] = await Promise.all([getFeeds(), getSettings(), getWeights()]);
     setFeeds(f);
     setSettings(s);
     setDerived(deriveSettings(s));
+    setWeights(w);
     setNow(Date.now());
   }, []);
 
@@ -127,12 +133,56 @@ export default function Dashboard() {
       </p>
 
       {/* Quick log button */}
-      <Link
-        href="/log"
-        className="block w-full text-center bg-blue-600 hover:bg-blue-500 text-white font-semibold py-3 rounded-xl mb-3 transition-colors"
-      >
-        ➕ Log Feed
-      </Link>
+      <div className="flex gap-2 mb-3">
+        <Link href="/log" className="flex-1 text-center bg-blue-600 hover:bg-blue-500 text-white font-semibold py-3 rounded-xl transition-colors">
+          ➕ Log Feed
+        </Link>
+        <button
+          onClick={() => { setNewWeightKg(settings.weightKg.toString()); setNewWeightTime(new Date().toISOString().slice(0,16)); setShowWeightModal(true); }}
+          className="px-4 py-3 bg-slate-700 hover:bg-slate-600 text-slate-200 text-sm font-semibold rounded-xl transition-colors"
+        >
+          ⚖️ Weight
+        </button>
+      </div>
+
+      {/* Weight modal */}
+      {showWeightModal && (
+        <div className="fixed inset-0 bg-black/70 z-50 flex items-end sm:items-center justify-center p-4" onClick={() => setShowWeightModal(false)}>
+          <div className="bg-slate-800 rounded-2xl p-6 w-full max-w-sm" onClick={e => e.stopPropagation()}>
+            <h2 className="text-lg font-bold text-slate-100 mb-4">⚖️ Update Weight</h2>
+            <div className="space-y-3 mb-5">
+              <div>
+                <label className="block text-sm text-slate-400 mb-1">Weight (kg)</label>
+                <input type="number" step="0.01" min="1" max="30"
+                  value={newWeightKg} onChange={e => setNewWeightKg(e.target.value)}
+                  className="w-full bg-slate-700 border border-slate-600 rounded-lg px-4 py-3 text-slate-100 text-lg focus:outline-none focus:border-blue-500" />
+              </div>
+              <div>
+                <label className="block text-sm text-slate-400 mb-1">Date &amp; time</label>
+                <input type="datetime-local"
+                  value={newWeightTime} onChange={e => setNewWeightTime(e.target.value)}
+                  className="w-full bg-slate-700 border border-slate-600 rounded-lg px-4 py-3 text-slate-100 focus:outline-none focus:border-blue-500" />
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <button onClick={() => setShowWeightModal(false)} className="flex-1 py-3 bg-slate-700 text-slate-300 rounded-xl">Cancel</button>
+              <button
+                onClick={async () => {
+                  const kg = parseFloat(newWeightKg);
+                  if (!kg || kg <= 0) return;
+                  const ts = newWeightTime ? new Date(newWeightTime).getTime() : Date.now();
+                  await addWeight({ timestamp: ts, weightKg: kg });
+                  setShowWeightModal(false);
+                  load();
+                }}
+                className="flex-1 py-3 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-xl"
+              >
+                Save
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Daily target — uses displayBottleVolumeWater from settings */}
       <DailyTargetCard
@@ -153,6 +203,7 @@ export default function Dashboard() {
         onStrictExplain={() => setShowStrictExplainer(true)}
         onSmoothedExplain={() => setShowSmoothedExplainer(true)}
         feeds={feeds}
+        weights={weights}
         now={now}
       />
 

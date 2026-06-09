@@ -143,3 +143,33 @@ export function exportCsv(feeds: Feed[]): void {
   a.click();
   URL.revokeObjectURL(url);
 }
+
+// ── Weight history ────────────────────────────────────────────────────────
+import type { WeightEntry } from './weights';
+
+export async function getWeights(): Promise<WeightEntry[]> {
+  const res = await fetch('/api/weights', { cache: 'no-store' });
+  if (!res.ok) return [];
+  return res.json();
+}
+
+export async function addWeight(entry: { timestamp: number; weightKg: number }): Promise<WeightEntry> {
+  const res = await fetch('/api/weights', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(entry),
+  });
+  return res.json();
+}
+
+export async function updateWeight(id: string, patch: Partial<{ timestamp: number; weightKg: number }>): Promise<void> {
+  await fetch(`/api/weights/${id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(patch),
+  });
+}
+
+export async function deleteWeight(id: string): Promise<void> {
+  await fetch(`/api/weights/${id}`, { method: 'DELETE' });
+}

@@ -1,10 +1,16 @@
 import { Feed } from "@/types";
 import { waterToMilk } from "@/lib/calculations";
+import { WeightEntry, dailyTargetAtTime } from "@/lib/weights";
 
-export interface TrendPoint { t: number; s: number; }
+export interface TrendPoint {
+  t: number;
+  s: number;        // smoothed intake ml
+  surplus: number;  // smoothed - dailyTarget(t) — positive = overfed, negative = underfed
+  dailyTarget: number;
+}
 
 /** Compute smoothed intake at time t using all feeds */
-function smoothedAt(feeds: Feed[], t: number, hourlyRate: number): number {
+export function smoothedAtTime(feeds: Feed[], t: number, hourlyRate: number): number {
   return feeds.reduce((sum, f) => {
     const age = (t - f.timestamp) / 3_600_000;
     if (age < 0) return sum;
@@ -13,26 +19,34 @@ function smoothedAt(feeds: Feed[], t: number, hourlyRate: number): number {
   }, 0);
 }
 
-/** Build trend points: one per feed in the window */
+/** Build trend points: one per feed in the window, surplus relative to weight-at-time */
 export function buildTrendPoints(
   feeds: Feed[],
-  hourlyRate: number,
+  weights: WeightEntry[],
+  mlPerKgPerDay: number,
+  fallbackWeight: number,
   windowMs: number,
   now: number
 ): TrendPoint[] {
   const T_START = now - windowMs;
   return feeds
     .filter(f => f.timestamp >= T_START && f.timestamp <= now)
-    .map(f => ({ t: f.timestamp, s: smoothedAt(feeds, f.timestamp, hourlyRate) }));
+    .map(f => {
+      const target = dailyTargetAtTime(f.timestamp, weights, mlPerKgPerDay, fallbackWeight);
+      const hr = target / 24;
+      const s = smoothedAtTime(feeds, f.timestamp, hr);
+      return { t: f.timestamp, s, surplus: s - target, dailyTarget: target };
+    });
 }
 
-/** Draw the trend graph onto a canvas 2d context */
+/** Draw the trend graph onto a canvas 2d context.
+ * Y axis = surplus ml (smoothed − dailyTarget). Zero line = target. */
 export function drawTrendGraph(
   ctx: CanvasRenderingContext2D,
   pts: TrendPoint[],
   now: number,
   windowMs: number,
-  dailyTargetMl: number,
+  dailyTargetMl: number,   // used for zone sizing (pct of current target)
   yellowPct: number,
   redPct: number,
   opts: { showLegend?: boolean; dayLabelFormat?: 'short' | 'date' } = {}
@@ -54,22 +68,24 @@ export function drawTrendGraph(
 
   const T_END = now, T_START = now - windowMs;
 
-  // Y range: symmetric around target, always includes all data
+  // Y axis = surplus (0 = target). Zones are ±ml based on current dailyTargetMl.
   const yGreen = dailyTargetMl * (yellowPct / 100);
   const yRed   = dailyTargetMl * (redPct   / 100);
-  const dataMin = Math.min(...pts.map(p => p.s));
-  const dataMax = Math.max(...pts.map(p => p.s));
-  const spread = Math.max(dailyTargetMl * 0.35, dataMax - dailyTargetMl, dailyTargetMl - dataMin) + 20;
-  const S_MIN = Math.max(0, dailyTargetMl - spread);
-  const S_MAX = dailyTargetMl + spread;
+  const surpluses = pts.map(p => p.surplus);
+  const surplusMax = Math.max(...surpluses, yRed + 20);
+  const surplusMin = Math.min(...surpluses, -(yRed + 20));
+  const spread = Math.max(Math.abs(surplusMax), Math.abs(surplusMin)) + 20;
+  const S_MIN = -spread;
+  const S_MAX = spread;
 
   const tx = (t: number) => PAD_L + ((t - T_START) / (T_END - T_START)) * plotW;
-  const ty = (s: number) => PAD_T + (1 - (s - S_MIN) / (S_MAX - S_MIN)) * plotH;
+  // ty maps surplus value (0 = midpoint)
+  const ty = (surplus: number) => PAD_T + (1 - (surplus - S_MIN) / (S_MAX - S_MIN)) * plotH;
 
-  const tyTarget = ty(dailyTargetMl);
-  const tyGreenTop = ty(dailyTargetMl + yGreen);
-  const tyGreenBot = ty(dailyTargetMl - yGreen);
-  const tyRedTop   = ty(dailyTargetMl + yRed);
+  const tyTarget = ty(0);          // zero line = green
+  const tyGreenTop = ty(yGreen);   // +yellowPct%
+  const tyGreenBot = ty(-yGreen);  // -yellowPct%
+  const tyRedTop   = ty(yRed);     // +redPct%
 
   ctx.fillStyle = '#1e293b';
   ctx.fillRect(0, 0, W, H);
@@ -108,10 +124,12 @@ export function drawTrendGraph(
   }
   ctx.setLineDash([]);
 
-  // Target line (solid green)
+  // Zero line (target — always solid green)
   ctx.strokeStyle = '#4ade8099';
   ctx.lineWidth = 1.5;
   ctx.beginPath(); ctx.moveTo(PAD_L, tyTarget); ctx.lineTo(PAD_L + plotW, tyTarget); ctx.stroke();
+  ctx.fillStyle = '#4ade80'; ctx.font = '9px sans-serif'; ctx.textAlign = 'right';
+  ctx.fillText('0', PAD_L - 3, tyTarget + 3);
 
   // Day separators
   const dayMs = 24 * 3_600_000;
@@ -133,14 +151,12 @@ export function drawTrendGraph(
     ctx.fillText(label, x, PAD_T + plotH + 12);
   }
 
-  // Y axis labels (target + ±zones)
-  ctx.fillStyle = '#4ade80'; ctx.font = '9px sans-serif'; ctx.textAlign = 'right';
-  ctx.fillText(`${Math.round(dailyTargetMl)}`, PAD_L - 3, tyTarget + 3);
-  ctx.fillStyle = '#475569';
-  for (const s of [S_MIN + 50, S_MAX - 50]) {
-    const yy = ty(s);
+  // Y axis labels (surplus scale)
+  ctx.fillStyle = '#475569'; ctx.font = '9px sans-serif'; ctx.textAlign = 'right';
+  for (const v of [-Math.round(spread * 0.7), Math.round(spread * 0.7)]) {
+    const yy = ty(v);
     if (yy >= PAD_T && yy <= PAD_T + plotH)
-      ctx.fillText(String(Math.round(s)), PAD_L - 3, yy + 3);
+      ctx.fillText(`${v > 0 ? '+' : ''}${v}`, PAD_L - 3, yy + 3);
   }
 
   // Catmull-Rom curve
@@ -149,23 +165,27 @@ export function drawTrendGraph(
   ctx.lineWidth = 2.5;
   ctx.lineJoin = 'round';
   ctx.beginPath();
-  ctx.moveTo(tx(pts[0].t), ty(pts[0].s));
+  ctx.moveTo(tx(pts[0].t), ty(pts[0].surplus));
   for (let i = 0; i < n - 1; i++) {
     const p0 = pts[Math.max(0, i-1)], p1 = pts[i], p2 = pts[i+1], p3 = pts[Math.min(n-1, i+2)];
     const cp1x = tx(p1.t) + (tx(p2.t) - tx(p0.t)) / 6;
-    const cp1y = ty(p1.s) + (ty(p2.s) - ty(p0.s)) / 6;
+    const cp1y = ty(p1.surplus) + (ty(p2.surplus) - ty(p0.surplus)) / 6;
     const cp2x = tx(p2.t) - (tx(p3.t) - tx(p1.t)) / 6;
-    const cp2y = ty(p2.s) - (ty(p3.s) - ty(p1.s)) / 6;
-    ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, tx(p2.t), ty(p2.s));
+    const cp2y = ty(p2.surplus) - (ty(p3.surplus) - ty(p1.surplus)) / 6;
+    ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, tx(p2.t), ty(p2.surplus));
   }
   ctx.stroke();
 
-  // Dots
+  // Dots — colour by surplus relative to zones
   pts.forEach(p => {
-    const d = Math.abs(p.s / dailyTargetMl * 100 - 100);
-    const col = d <= yellowPct ? '#4ade80' : d <= redPct ? '#facc15' : p.s > dailyTargetMl ? '#f87171' : '#60a5fa';
+    const absSurplus = Math.abs(p.surplus);
+    const zoneGreen = p.dailyTarget * (yellowPct / 100);
+    const zoneRed   = p.dailyTarget * (redPct   / 100);
+    const col = absSurplus <= zoneGreen ? '#4ade80'
+              : absSurplus <= zoneRed   ? '#facc15'
+              : p.surplus > 0           ? '#f87171' : '#60a5fa';
     ctx.fillStyle = col;
-    ctx.beginPath(); ctx.arc(tx(p.t), ty(p.s), 3.5, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(tx(p.t), ty(p.surplus), 3.5, 0, Math.PI * 2); ctx.fill();
   });
 
   // Y axis line

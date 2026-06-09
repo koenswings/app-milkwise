@@ -12,10 +12,13 @@ import {
 import { Feed, Settings, DerivedSettings } from "@/types";
 import { useRef } from "react";
 import { buildTrendPoints, drawTrendGraph } from "@/lib/trendGraph";
+import { WeightEntry } from "@/lib/weights";
+import { getWeights } from "@/lib/store";
 import BottomNav from "@/components/BottomNav";
 
-function TrendCanvas({ feeds, days, dailyTargetMl, hourlyRate, yellowPct, redPct }: {
-  feeds: Feed[]; days: number; dailyTargetMl: number; hourlyRate: number;
+function TrendCanvas({ feeds, weights, days, dailyTargetMl, mlPerKgPerDay, fallbackWeight, yellowPct, redPct }: {
+  feeds: Feed[]; weights: WeightEntry[]; days: number; dailyTargetMl: number;
+  mlPerKgPerDay: number; fallbackWeight: number;
   yellowPct: number; redPct: number;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -24,10 +27,10 @@ function TrendCanvas({ feeds, days, dailyTargetMl, hourlyRate, yellowPct, redPct
   useEffect(() => {
     const canvas = canvasRef.current; if (!canvas) return;
     const ctx = canvas.getContext('2d'); if (!ctx) return;
-    const pts = buildTrendPoints(feeds, hourlyRate, windowMs, now);
+    const pts = buildTrendPoints(feeds, weights, mlPerKgPerDay, fallbackWeight, windowMs, now);
     drawTrendGraph(ctx, pts, now, windowMs, dailyTargetMl, yellowPct, redPct,
       { showLegend: true, dayLabelFormat: days > 7 ? 'date' : 'short' });
-  }, [feeds, days, dailyTargetMl, hourlyRate, yellowPct, redPct]);
+  }, [feeds, weights, days, dailyTargetMl, mlPerKgPerDay, fallbackWeight, yellowPct, redPct]);
   return <canvas ref={canvasRef} width={560} height={220} className="w-full rounded-lg" style={{ imageRendering: 'crisp-edges' }} />;
 }
 
@@ -35,14 +38,16 @@ export default function AnalyticsPage() {
   const [feeds, setFeeds] = useState<Feed[]>([]);
   const [settings, setSettings] = useState<Settings | null>(null);
   const [derived, setDerived] = useState<DerivedSettings | null>(null);
+  const [weights, setWeights] = useState<WeightEntry[]>([]);
   const [days, setDays] = useState(7);
   const [showConsistencyInfo, setShowConsistencyInfo] = useState(false);
 
   const load = useCallback(async () => {
-    const [f, s] = await Promise.all([getFeeds(), getSettings()]);
+    const [f, s, w] = await Promise.all([getFeeds(), getSettings(), getWeights()]);
     setFeeds(f);
     setSettings(s);
     setDerived(deriveSettings(s));
+    setWeights(w);
   }, []);
 
   useEffect(() => {
@@ -63,16 +68,12 @@ export default function AnalyticsPage() {
   const total7 = periodTotal(feeds, 7);
   const total14 = periodTotal(feeds, 14);
 
-  // Average surplus/deficit over selected period
+  // Average surplus over selected period using weight-at-time
   const windowMs = days * 24 * 3_600_000;
   const now = Date.now();
-  const recentFeeds = feeds.filter(f => f.timestamp >= now - windowMs);
-  const avgSurplusMl = recentFeeds.length > 0
-    ? recentFeeds.reduce((sum, f) => {
-        const pts = buildTrendPoints(feeds, derived.hourlyRate, windowMs, f.timestamp);
-        const smoothed = pts.length > 0 ? pts[pts.length - 1].s : 0;
-        return sum + (smoothed - derived.dailyTargetMl);
-      }, 0) / recentFeeds.length
+  const trendPts = buildTrendPoints(feeds, weights, settings.mlPerKgPerDay, settings.weightKg, windowMs, now);
+  const avgSurplusMl = trendPts.length > 0
+    ? trendPts.reduce((sum, p) => sum + p.surplus, 0) / trendPts.length
     : 0;
 
   return (
@@ -92,8 +93,9 @@ export default function AnalyticsPage() {
             ))}
           </div>
         </div>
-        <TrendCanvas feeds={feeds} days={days} dailyTargetMl={derived.dailyTargetMl}
-          hourlyRate={derived.hourlyRate}
+        <TrendCanvas feeds={feeds} weights={weights} days={days}
+          dailyTargetMl={derived.dailyTargetMl}
+          mlPerKgPerDay={settings.mlPerKgPerDay} fallbackWeight={settings.weightKg}
           yellowPct={settings.yellowThresholdPct} redPct={settings.redThresholdPct} />
         <p className="text-xs text-slate-500 mt-1">
           Each dot = smoothed intake at time of bottle. Curve interpolated through dots.

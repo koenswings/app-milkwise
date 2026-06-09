@@ -5,6 +5,7 @@ import SwipeableCard from "@/components/SwipeableCard";
 import { waterToMilk } from "@/lib/calculations";
 import { buildTrendPoints, drawTrendGraph } from "@/lib/trendGraph";
 import { Feed } from "@/types";
+import { WeightEntry } from "@/lib/weights";
 import Link from "next/link";
 
 interface Props {
@@ -19,6 +20,7 @@ interface Props {
   onStrictExplain: () => void;
   onSmoothedExplain: () => void;
   feeds: Feed[];
+  weights: WeightEntry[];
   now: number;
 }
 
@@ -316,9 +318,9 @@ function EmojiBalanceView({ smoothedMl, smoothedPct, dailyTargetMl, yellowThresh
 }
 
 // ── Feed-point trend view (inline canvas) ────────────────────────────────────
-function FeedTrendView({ feeds, now, dailyTargetMl, hourlyRate, pct, y, r }:
-  { feeds: Feed[]; now: number; dailyTargetMl: number; hourlyRate: number;
-    pct: number; y: number; r: number }) {
+function FeedTrendView({ feeds, weights, mlPerKgPerDay, fallbackWeight, now, dailyTargetMl, pct, y, r }:
+  { feeds: Feed[]; weights: WeightEntry[]; mlPerKgPerDay: number; fallbackWeight: number;
+    now: number; dailyTargetMl: number; pct: number; y: number; r: number }) {
 
   const canvasRef = React.useRef<HTMLCanvasElement>(null);
 
@@ -327,9 +329,9 @@ function FeedTrendView({ feeds, now, dailyTargetMl, hourlyRate, pct, y, r }:
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
-    const pts = buildTrendPoints(feeds, hourlyRate, 3 * 24 * 3_600_000, now);
+    const pts = buildTrendPoints(feeds, weights, mlPerKgPerDay, fallbackWeight, 3 * 24 * 3_600_000, now);
     drawTrendGraph(ctx, pts, now, 3 * 24 * 3_600_000, dailyTargetMl, y, r, { showLegend: true });
-  }, [feeds, now, dailyTargetMl, hourlyRate, pct, y, r]);
+  }, [feeds, weights, mlPerKgPerDay, fallbackWeight, now, dailyTargetMl, pct, y, r]);
 
   const diff = Math.abs(pct - 100);
   const color = diff <= y ? '#4ade80' : diff <= r ? '#facc15' : '#f87171';
@@ -382,8 +384,9 @@ export default function StatusCard(props: Props) {
         <PanelWithGauge key="smoothed-gauge" label="STATUS LAST 24H" ml={smoothedMl} pct={smoothedPct}
           milkPerBottle={milkPerBottle} dailyTargetMl={props.dailyTargetMl} y={y} r={r}
           onExplain={props.onSmoothedExplain} feeds24h={feeds24h} />,
-        <FeedTrendView key="trend" feeds={props.feeds} now={props.now}
-          dailyTargetMl={props.dailyTargetMl} hourlyRate={props.dailyTargetMl / 24}
+        <FeedTrendView key="trend" feeds={props.feeds} weights={props.weights}
+          mlPerKgPerDay={150} fallbackWeight={props.dailyTargetMl / 150}
+          now={props.now} dailyTargetMl={props.dailyTargetMl}
           pct={smoothedPct} y={y} r={r} />,
         <Panel key="smoothed" label="STATUS LAST 24H" ml={smoothedMl} pct={smoothedPct}
           milkPerBottle={milkPerBottle} standardBottleVolume={standardBottleVolume} y={y} r={r}

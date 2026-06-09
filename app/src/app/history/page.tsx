@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getFeeds, deleteFeed, updateFeed, getSettings } from "@/lib/store";
+import { getFeeds, deleteFeed, updateFeed, getSettings, getWeights, addWeight, updateWeight, deleteWeight } from "@/lib/store";
 import { formatDateTime } from "@/lib/formatTime";
 import { feedsWithCredit } from "@/lib/calculations";
 import { FeedWithCredit, Settings } from "@/types";
+import { WeightEntry } from "@/lib/weights";
 import BottomNav from "@/components/BottomNav";
 
 function toDatetimeLocal(ts: number): string {
@@ -16,16 +17,22 @@ function toDatetimeLocal(ts: number): string {
 export default function HistoryPage() {
   const [feeds, setFeeds] = useState<FeedWithCredit[]>([]);
   const [settings, setSettings] = useState<Settings | null>(null);
+  const [weights, setWeights] = useState<WeightEntry[]>([]);
+  const [view, setView] = useState<'feeds'|'weights'>('feeds');
   const [search, setSearch] = useState("");
   const [editId, setEditId] = useState<string | null>(null);
   const [editVolume, setEditVolume] = useState("");
   const [editDatetime, setEditDatetime] = useState("");
+  const [editWeightId, setEditWeightId] = useState<string|null>(null);
+  const [editWeightKg, setEditWeightKg] = useState("");
+  const [editWeightTs, setEditWeightTs] = useState("");
 
   async function load() {
-    const [f, s] = await Promise.all([getFeeds(), getSettings()]);
+    const [f, s, w] = await Promise.all([getFeeds(), getSettings(), getWeights()]);
     const hourlyRate = (s.weightKg * s.mlPerKgPerDay) / 24;
     setFeeds(feedsWithCredit(f, hourlyRate));
     setSettings(s);
+    setWeights(w.sort((a, b) => b.timestamp - a.timestamp));
   }
 
   useEffect(() => {
@@ -63,17 +70,67 @@ export default function HistoryPage() {
 
   return (
     <div className="max-w-lg mx-auto px-4 pt-6 pb-24">
-      <h1 className="text-2xl font-bold text-slate-100 mb-4">📋 Feed History</h1>
+      <div className="flex items-center justify-between mb-4">
+        <h1 className="text-2xl font-bold text-slate-100">📋 History</h1>
+        <div className="flex gap-1">
+          <button onClick={() => setView('feeds')} className={`px-3 py-1 rounded text-sm font-medium transition-colors ${view==='feeds' ? 'bg-blue-600 text-white' : 'bg-slate-700 text-slate-400'}`}>Feeds</button>
+          <button onClick={() => setView('weights')} className={`px-3 py-1 rounded text-sm font-medium transition-colors ${view==='weights' ? 'bg-blue-600 text-white' : 'bg-slate-700 text-slate-400'}`}>Weight</button>
+        </div>
+      </div>
 
-      <input
+      {view === 'feeds' && <input
         type="text"
         placeholder="Search by date (e.g. 2025-01)"
         value={search}
         onChange={(e) => setSearch(e.target.value)}
         className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-slate-100 text-sm mb-4 focus:outline-none focus:border-blue-500"
-      />
+      />}
 
-      {filtered.length === 0 ? (
+      {view === 'weights' && (
+        <div className="space-y-2">
+          {weights.length === 0 && <div className="text-slate-400 text-center py-12">No weight entries yet</div>}
+          {weights.map(w => {
+            const isEditing = editWeightId === w.id;
+            return (
+              <div key={w.id} className="bg-slate-800 rounded-xl p-4">
+                {isEditing ? (
+                  <div className="space-y-2">
+                    <input type="number" step="0.01" value={editWeightKg} onChange={e => setEditWeightKg(e.target.value)}
+                      className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-slate-100 text-sm" />
+                    <input type="datetime-local" value={editWeightTs} onChange={e => setEditWeightTs(e.target.value)}
+                      className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-slate-100 text-sm" />
+                    <div className="flex gap-2">
+                      <button onClick={() => setEditWeightId(null)} className="flex-1 py-2 bg-slate-700 text-slate-300 rounded-lg text-sm">Cancel</button>
+                      <button onClick={async () => {
+                        const kg = parseFloat(editWeightKg);
+                        if (!kg) return;
+                        const ts = editWeightTs ? new Date(editWeightTs).getTime() : w.timestamp;
+                        await updateWeight(w.id, { weightKg: kg, timestamp: ts });
+                        setEditWeightId(null); load();
+                      }} className="flex-1 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium">Save</button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="font-semibold text-slate-100">{w.weightKg} kg</div>
+                      <div className="text-xs text-slate-400">{new Date(w.timestamp).toLocaleString()}</div>
+                    </div>
+                    <div className="flex gap-2">
+                      <button onClick={() => { setEditWeightId(w.id); setEditWeightKg(w.weightKg.toString()); setEditWeightTs(toDatetimeLocal(w.timestamp)); }}
+                        className="text-xs text-blue-400 hover:text-blue-300">Edit</button>
+                      <button onClick={async () => { if (!confirm('Delete?')) return; await deleteWeight(w.id); load(); }}
+                        className="text-xs text-red-400 hover:text-red-300">Delete</button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {view === 'feeds' && (filtered.length === 0 ? (
         <div className="text-slate-400 text-center py-12">No feeds logged yet</div>
       ) : (
         <div className="space-y-2">
@@ -160,7 +217,7 @@ export default function HistoryPage() {
             );
           })}
         </div>
-      )}
+      ))}
 
       <BottomNav />
     </div>
