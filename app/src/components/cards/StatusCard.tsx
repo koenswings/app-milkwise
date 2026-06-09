@@ -3,6 +3,7 @@
 import React from "react";
 import SwipeableCard from "@/components/SwipeableCard";
 import { waterToMilk } from "@/lib/calculations";
+import { buildTrendPoints, drawTrendGraph } from "@/lib/trendGraph";
 import { Feed } from "@/types";
 import Link from "next/link";
 
@@ -323,102 +324,11 @@ function FeedTrendView({ feeds, now, dailyTargetMl, hourlyRate, pct, y, r }:
 
   React.useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas || !feeds.length) return;
+    if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
-
-    const W = canvas.width, H = canvas.height;
-    const PAD_L = 42, PAD_R = 12, PAD_T = 16, PAD_B = 30;
-    const plotW = W - PAD_L - PAD_R, plotH = H - PAD_T - PAD_B;
-
-    // Only feeds in last 3 days
-    const T_END = now, T_START = now - 3 * 24 * 3_600_000;
-    const pts = feeds
-      .filter(f => f.timestamp >= T_START && f.timestamp <= T_END)
-      .map(f => ({
-        t: f.timestamp,
-        // smoothed value at that feed's timestamp
-        s: feeds.reduce((sum, fj) => {
-          const age = (f.timestamp - fj.timestamp) / 3_600_000;
-          if (age < 0) return sum;
-          const milk = waterToMilk(fj.volume);
-          return sum + (age <= 24 ? milk : Math.max(0, milk - hourlyRate * (age - 24)));
-        }, 0),
-      }));
-
-    if (pts.length < 2) return;
-
-    const S_MAX = Math.max(dailyTargetMl * 1.25, ...pts.map(p => p.s)) + 30;
-    const S_MIN = Math.max(0, Math.min(...pts.map(p => p.s)) - 40);
-
-    const tx = (t: number) => PAD_L + ((t - T_START) / (T_END - T_START)) * plotW;
-    const ty = (s: number) => PAD_T + (1 - (s - S_MIN) / (S_MAX - S_MIN)) * plotH;
-
-    ctx.fillStyle = '#1e293b';
-    ctx.fillRect(0, 0, W, H);
-
-    // Surplus/deficit bands
-    const tyTarget = ty(dailyTargetMl);
-    ctx.fillStyle = 'rgba(249,115,22,0.1)';
-    ctx.fillRect(PAD_L, PAD_T, plotW, tyTarget - PAD_T);
-    ctx.fillStyle = 'rgba(96,165,250,0.1)';
-    ctx.fillRect(PAD_L, tyTarget, plotW, PAD_T + plotH - tyTarget);
-
-    // Target line
-    ctx.strokeStyle = '#4ade8060';
-    ctx.lineWidth = 1.5;
-    ctx.setLineDash([5, 3]);
-    ctx.beginPath(); ctx.moveTo(PAD_L, tyTarget); ctx.lineTo(PAD_L + plotW, tyTarget); ctx.stroke();
-    ctx.setLineDash([]);
-    ctx.fillStyle = '#4ade80'; ctx.font = '9px sans-serif'; ctx.textAlign = 'left';
-    ctx.fillText(`${Math.round(dailyTargetMl)}`, PAD_L + 2, tyTarget - 3);
-
-    // Smooth interpolated curve through feed points (monotone cubic)
-    // Simple Catmull-Rom for visual smoothness
-    const n = pts.length;
-    ctx.strokeStyle = '#a78bfa';
-    ctx.lineWidth = 2.5;
-    ctx.lineJoin = 'round';
-    ctx.beginPath();
-    ctx.moveTo(tx(pts[0].t), ty(pts[0].s));
-    for (let i = 0; i < n - 1; i++) {
-      const p0 = pts[Math.max(0, i-1)], p1 = pts[i], p2 = pts[i+1], p3 = pts[Math.min(n-1, i+2)];
-      const cp1x = tx(p1.t) + (tx(p2.t) - tx(p0.t)) / 6;
-      const cp1y = ty(p1.s) + (ty(p2.s) - ty(p0.s)) / 6;
-      const cp2x = tx(p2.t) - (tx(p3.t) - tx(p1.t)) / 6;
-      const cp2y = ty(p2.s) - (ty(p3.s) - ty(p1.s)) / 6;
-      ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, tx(p2.t), ty(p2.s));
-    }
-    ctx.stroke();
-
-    // Dots at each feed point
-    pts.forEach(p => {
-      const col = Math.abs(p.s / dailyTargetMl * 100 - 100) <= y ? '#4ade80'
-                : p.s > dailyTargetMl ? '#f97316' : '#60a5fa';
-      ctx.fillStyle = col;
-      ctx.beginPath(); ctx.arc(tx(p.t), ty(p.s), 3.5, 0, Math.PI*2); ctx.fill();
-    });
-
-    // Day labels
-    const dayMs = 24 * 3_600_000;
-    for (let t = Math.ceil(T_START / dayMs) * dayMs; t <= T_END; t += dayMs) {
-      const x = tx(t);
-      ctx.strokeStyle = 'rgba(255,255,255,0.1)'; ctx.lineWidth = 1; ctx.setLineDash([3,3]);
-      ctx.beginPath(); ctx.moveTo(x, PAD_T); ctx.lineTo(x, PAD_T + plotH); ctx.stroke();
-      ctx.setLineDash([]);
-      const d = new Date(t); const label = d.toLocaleDateString([], {weekday:'short'});
-      ctx.fillStyle = '#475569'; ctx.font = '9px sans-serif'; ctx.textAlign = 'center';
-      ctx.fillText(label, x, PAD_T + plotH + 12);
-    }
-
-    // Y axis
-    ctx.strokeStyle = '#334155'; ctx.lineWidth = 1.5; ctx.setLineDash([]);
-    ctx.beginPath(); ctx.moveTo(PAD_L, PAD_T); ctx.lineTo(PAD_L, PAD_T+plotH); ctx.stroke();
-    for (const s of [S_MIN, dailyTargetMl, S_MAX]) {
-      const yy = ty(s); if (yy < PAD_T || yy > PAD_T+plotH) continue;
-      ctx.fillStyle = '#475569'; ctx.font = '9px sans-serif'; ctx.textAlign = 'right';
-      ctx.fillText(String(Math.round(s)), PAD_L - 3, yy + 3);
-    }
+    const pts = buildTrendPoints(feeds, hourlyRate, 3 * 24 * 3_600_000, now);
+    drawTrendGraph(ctx, pts, now, 3 * 24 * 3_600_000, dailyTargetMl, y, r, { showLegend: true });
   }, [feeds, now, dailyTargetMl, hourlyRate, pct, y, r]);
 
   const diff = Math.abs(pct - 100);
@@ -430,16 +340,12 @@ function FeedTrendView({ feeds, now, dailyTargetMl, hourlyRate, pct, y, r }:
         <span className="text-xs text-slate-400 uppercase tracking-wide">Intake trend — 3 days</span>
         <span className="text-sm font-bold tabular-nums" style={{ color }}>{Math.round(pct)}%</span>
       </div>
-      <canvas ref={canvasRef} width={500} height={180}
+      <canvas ref={canvasRef} width={520} height={200}
         className="w-full rounded-lg" style={{ imageRendering: 'crisp-edges' }} />
-      <div className="flex items-center gap-3 mt-1.5 text-xs text-slate-600">
-        <span>● above = surplus</span>
-        <span>● below = deficit</span>
-        <span>● dot = bottle logged</span>
-      </div>
     </div>
   );
 }
+
 
 // ── History link view ──────────────────────────────────────────────────────────
 function HistoryLinkView({ pct, ml, y, r }: { pct: number; ml: number; y: number; r: number }) {
@@ -476,6 +382,9 @@ export default function StatusCard(props: Props) {
         <PanelWithGauge key="smoothed-gauge" label="STATUS LAST 24H" ml={smoothedMl} pct={smoothedPct}
           milkPerBottle={milkPerBottle} dailyTargetMl={props.dailyTargetMl} y={y} r={r}
           onExplain={props.onSmoothedExplain} feeds24h={feeds24h} />,
+        <FeedTrendView key="trend" feeds={props.feeds} now={props.now}
+          dailyTargetMl={props.dailyTargetMl} hourlyRate={props.dailyTargetMl / 24}
+          pct={smoothedPct} y={y} r={r} />,
         <Panel key="smoothed" label="STATUS LAST 24H" ml={smoothedMl} pct={smoothedPct}
           milkPerBottle={milkPerBottle} standardBottleVolume={standardBottleVolume} y={y} r={r}
           onExplain={props.onSmoothedExplain} feeds24h={feeds24h} />,
@@ -487,9 +396,6 @@ export default function StatusCard(props: Props) {
         <BiDirectionalView key="bidir" {...props} />,
         <ThermometerView key="thermo" {...props} />,
         <EmojiBalanceView key="emoji" {...props} />,
-        <FeedTrendView key="trend" feeds={props.feeds} now={props.now}
-          dailyTargetMl={props.dailyTargetMl} hourlyRate={props.dailyTargetMl / 24}
-          pct={smoothedPct} y={y} r={r} />,
         <HistoryLinkView key="history" pct={smoothedPct} ml={smoothedMl} y={y} r={r} />,
       ]}
     />

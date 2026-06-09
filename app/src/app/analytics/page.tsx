@@ -10,24 +10,25 @@ import {
   deriveSettings,
 } from "@/lib/calculations";
 import { Feed, Settings, DerivedSettings } from "@/types";
-import {
-  BarChart,
-  Bar,
-  Cell,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-} from "recharts";
+import { useRef } from "react";
+import { buildTrendPoints, drawTrendGraph } from "@/lib/trendGraph";
 import BottomNav from "@/components/BottomNav";
 
-function barColorHex(pct: number, y: number, r: number, isToday?: boolean, totalMl?: number): string {
-  if (isToday) return '#64748b'; // grey — day in progress
-  if (!totalMl || totalMl === 0) return '#334155'; // empty
-  const diff = Math.abs(pct - 100);
-  if (diff <= y) return '#4ade80';
-  if (diff <= r) return '#facc15';
-  return '#f87171';
+function TrendCanvas({ feeds, days, dailyTargetMl, hourlyRate, yellowPct, redPct }: {
+  feeds: Feed[]; days: number; dailyTargetMl: number; hourlyRate: number;
+  yellowPct: number; redPct: number;
+}) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const now = Date.now();
+  const windowMs = days * 24 * 3_600_000;
+  useEffect(() => {
+    const canvas = canvasRef.current; if (!canvas) return;
+    const ctx = canvas.getContext('2d'); if (!ctx) return;
+    const pts = buildTrendPoints(feeds, hourlyRate, windowMs, now);
+    drawTrendGraph(ctx, pts, now, windowMs, dailyTargetMl, yellowPct, redPct,
+      { showLegend: true, dayLabelFormat: days > 7 ? 'date' : 'short' });
+  }, [feeds, days, dailyTargetMl, hourlyRate, yellowPct, redPct]);
+  return <canvas ref={canvasRef} width={560} height={220} className="w-full rounded-lg" style={{ imageRendering: 'crisp-edges' }} />;
 }
 
 export default function AnalyticsPage() {
@@ -56,81 +57,48 @@ export default function AnalyticsPage() {
     return <div className="flex items-center justify-center h-screen"><div className="text-slate-400">Loading…</div></div>;
   }
 
-  const chartData = dailyTotals(feeds, days, derived.dailyTargetMl).map((d) => {
-    const pct = d.targetMl > 0 ? (d.totalMl / d.targetMl) * 100 : 0;
-    return {
-      ...d,
-      date: d.date.slice(5), // MM-DD
-      pct,
-    };
-  });
-
   const avgInterval = avgIntervalHours(feeds);
   const consistency = consistencyScore(feeds);
   const total3 = periodTotal(feeds, 3);
   const total7 = periodTotal(feeds, 7);
   const total14 = periodTotal(feeds, 14);
 
-  const targetBottlesPerDay = derived.dailyTargetMl / settings.standardBottleVolume;
+  // Average surplus/deficit over selected period
+  const windowMs = days * 24 * 3_600_000;
+  const now = Date.now();
+  const recentFeeds = feeds.filter(f => f.timestamp >= now - windowMs);
+  const avgSurplusMl = recentFeeds.length > 0
+    ? recentFeeds.reduce((sum, f) => {
+        const pts = buildTrendPoints(feeds, derived.hourlyRate, windowMs, f.timestamp);
+        const smoothed = pts.length > 0 ? pts[pts.length - 1].s : 0;
+        return sum + (smoothed - derived.dailyTargetMl);
+      }, 0) / recentFeeds.length
+    : 0;
 
   return (
     <div className="max-w-lg mx-auto px-4 pt-6 pb-24">
       <h1 className="text-2xl font-bold text-slate-100 mb-6">📊 Analytics</h1>
 
-      {/* Daily chart */}
+      {/* Trend chart */}
       <div className="bg-slate-800 rounded-xl p-4 mb-4">
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-sm font-semibold text-slate-300">Daily Totals (ml)</h2>
+          <h2 className="text-sm font-semibold text-slate-300">Smoothed intake trend</h2>
           <div className="flex gap-1">
-            <button
-              onClick={() => setDays(7)}
-              className={`px-3 py-1 rounded text-sm ${days === 7 ? "bg-blue-600 text-white" : "bg-slate-700 text-slate-400"}`}
-            >
-              7d
-            </button>
-            <button
-              onClick={() => setDays(30)}
-              className={`px-3 py-1 rounded text-sm ${days === 30 ? "bg-blue-600 text-white" : "bg-slate-700 text-slate-400"}`}
-            >
-              30d
-            </button>
+            {[7,30].map(d => (
+              <button key={d} onClick={() => setDays(d)}
+                className={`px-3 py-1 rounded text-sm ${days === d ? 'bg-blue-600 text-white' : 'bg-slate-700 text-slate-400'}`}>
+                {d}d
+              </button>
+            ))}
           </div>
         </div>
-        <ResponsiveContainer width="100%" height={200}>
-          <BarChart data={chartData} margin={{ top: 4, right: 4, bottom: 4, left: 0 }}>
-            <XAxis dataKey="date" tick={{ fill: "#94a3b8", fontSize: 11 }} />
-            <YAxis tick={{ fill: "#94a3b8", fontSize: 11 }} />
-            <Tooltip
-              contentStyle={{ background: "#0f172a", border: "1px solid #334155", borderRadius: 8 }}
-              labelStyle={{ color: "#cbd5e1" }}
-              itemStyle={{ color: "#93c5fd" }}
-              cursor={{ fill: 'rgba(255,255,255,0.05)' }}
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              formatter={(value: any, _name: any, props: any) => {
-                const target: number | undefined = props?.payload?.targetMl;
-                const pct: number | undefined = props?.payload?.pct;
-                const ml = typeof value === 'number' ? Math.round(value) : value;
-                return [
-                  `${ml} ml${target ? ` (target: ${Math.round(target)} ml, ${pct !== undefined ? Math.round(pct) : 0}%)` : ""}`,
-                  "Total"
-                ];
-              }}
-            />
-            <Bar dataKey="totalMl" radius={[4, 4, 0, 0]}>
-              {chartData.map((entry, index) => {
-                const color = barColorHex(
-                  entry.pct,
-                  settings.yellowThresholdPct ?? 5,
-                  settings.redThresholdPct ?? 10,
-                  (entry as any).isToday,
-                  entry.totalMl
-                );
-                return <Cell key={`cell-${index}`} fill={color} />;
-              })}
-            </Bar>
-          </BarChart>
-        </ResponsiveContainer>
-        <p className="text-xs text-slate-500 mt-1">Green dashed = current target ({Math.round(derived.dailyTargetMl)} ml). Bar color reflects target at time of feed. 🟢 on track (±{settings.yellowThresholdPct}%) 🟡 slightly off (±{settings.redThresholdPct}%) 🔴 significantly off</p>
+        <TrendCanvas feeds={feeds} days={days} dailyTargetMl={derived.dailyTargetMl}
+          hourlyRate={derived.hourlyRate}
+          yellowPct={settings.yellowThresholdPct} redPct={settings.redThresholdPct} />
+        <p className="text-xs text-slate-500 mt-1">
+          Each dot = smoothed intake at time of bottle. Curve interpolated through dots.
+          Green zone = ±{settings.yellowThresholdPct}% of target.
+        </p>
       </div>
 
       {/* Stats grid */}
@@ -160,9 +128,11 @@ export default function AnalyticsPage() {
           <div className="text-xs text-slate-500">lower = more consistent</div>
         </div>
         <div className="bg-slate-800 rounded-xl p-4">
-          <div className="text-xs text-slate-400 mb-1">Target bottles/day</div>
-          <div className="text-xl font-bold text-slate-100">{targetBottlesPerDay.toFixed(1)}</div>
-          <div className="text-xs text-slate-500">{settings.standardBottleVolume} ml each</div>
+          <div className="text-xs text-slate-400 mb-1">Avg {days}d surplus</div>
+          <div className={`text-xl font-bold ${avgSurplusMl > 5 ? 'text-yellow-400' : avgSurplusMl < -5 ? 'text-blue-400' : 'text-green-400'}`}>
+            {avgSurplusMl >= 0 ? '+' : ''}{Math.round(avgSurplusMl)} ml
+          </div>
+          <div className="text-xs text-slate-500">{avgSurplusMl > 5 ? 'overfed on avg' : avgSurplusMl < -5 ? 'underfed on avg' : 'on target'}</div>
         </div>
         <div className="bg-slate-800 rounded-xl p-4">
           <div className="text-xs text-slate-400 mb-1">Total feeds</div>
