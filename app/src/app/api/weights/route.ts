@@ -2,18 +2,26 @@ import { NextResponse } from 'next/server';
 import { readWeights, writeWeights } from '@/lib/server-weights';
 import { readSettings, writeSettings } from '@/lib/server-store';
 import { WeightEntry } from '@/lib/weights';
-import { randomUUID } from 'crypto';
+
+function genId(): string {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2);
+}
 
 export async function GET() {
-  return NextResponse.json(readWeights());
+  try {
+    return NextResponse.json(readWeights());
+  } catch(e) {
+    return NextResponse.json({ error: String(e) }, { status: 500 });
+  }
 }
 
 export async function POST(req: Request) {
+  try {
   const body = await req.json();
   const entry: WeightEntry = {
-    id: randomUUID(),
+    id: genId(),
     timestamp: body.timestamp ?? Date.now(),
-    weightKg: body.weightKg,
+    weightKg: Number(body.weightKg),
   };
   const weights = readWeights();
   weights.push(entry);
@@ -24,4 +32,7 @@ export async function POST(req: Request) {
   settings.weightKg = sorted[0].weightKg;
   writeSettings(settings);
   return NextResponse.json(entry);
+  } catch(e) {
+    return NextResponse.json({ error: String(e) }, { status: 500 });
+  }
 }
