@@ -12,7 +12,7 @@ export default function Strict24hExplainer({ onClose }: Props) {
       <div className="bg-slate-900 rounded-2xl w-full max-w-lg max-h-[80vh] overflow-y-auto shadow-2xl mt-16 sm:mt-4">
         <div className="flex items-center justify-between p-5 border-b border-slate-700">
           <h2 className="text-lg font-semibold text-slate-100">Strict 24h — how it works</h2>
-          <button onClick={onClose} className="text-blue-400 hover:text-blue-300 text-sm">← Back</button>
+          <button onClick={onClose} className="text-blue-400 hover:text-blue-300 text-sm">← Back to dashboard</button>
         </div>
 
         <div className="p-5 space-y-5 text-base text-slate-300 leading-relaxed mt-2">
@@ -51,7 +51,7 @@ export default function Strict24hExplainer({ onClose }: Props) {
             </p>
           </section>
 
-          <button onClick={onClose} className="w-full text-center text-blue-400 hover:text-blue-300 text-sm py-2">← Back</button>
+          <button onClick={onClose} className="w-full text-center text-blue-400 hover:text-blue-300 text-sm py-2">← Back to dashboard</button>
         </div>
       </div>
     </div>

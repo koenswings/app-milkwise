@@ -126,28 +126,58 @@ function WeightChart({ weights }: { weights: WeightEntry[] }) {
     <div className="bg-slate-800 rounded-xl p-8 text-center text-slate-400 mb-4">No weight entries yet. Use the ⚖️ button on the dashboard.</div>
   );
 
+  // Weight statistics
+  const sorted2 = [...weights].sort((a,b) => a.timestamp - b.timestamp);
+  const latest = sorted2[sorted2.length-1];
+  const oldest = sorted2[0];
+  const gainKg = sorted2.length >= 2 ? latest.weightKg - oldest.weightKg : null;
+  const daySpan = sorted2.length >= 2 ? (latest.timestamp - oldest.timestamp) / 86_400_000 : null;
+  const gainPerWeek = gainKg !== null && daySpan && daySpan > 0 ? (gainKg / daySpan * 7) : null;
+
   return (
-    <div className="bg-slate-800 rounded-xl p-4 mb-4">
-      <canvas ref={canvasRef} width={560} height={260}
-        className="w-full rounded-lg" style={{ imageRendering: 'crisp-edges' }} />
-      <div className="flex items-center justify-between mt-2">
-        <p className="text-xs text-slate-500">{weights.length} weight entr{weights.length === 1 ? 'y' : 'ies'} recorded.</p>
-        <button
-          onClick={() => {
-            const sorted = [...weights].sort((a,b) => a.timestamp - b.timestamp);
-            const csv = ['Date,Time,Weight (kg)',...sorted.map(w => {
-              const d = new Date(w.timestamp);
-              return `${d.toLocaleDateString()},${d.toLocaleTimeString()},${w.weightKg}`;
-            })].join('\n');
-            const a = document.createElement('a');
-            a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
-            a.download = 'weight-history.csv'; a.click();
-          }}
-          className="text-xs text-blue-400 hover:text-blue-300 px-2 py-1 bg-slate-700 rounded"
-        >
-          ⬇️ Export CSV
-        </button>
+    <div className="mb-4">
+      {/* Stats grid */}
+      <div className="grid grid-cols-3 gap-2 mb-3">
+        <div className="bg-slate-800 rounded-xl p-3 text-center">
+          <div className="text-xl font-bold text-slate-100">{latest.weightKg} kg</div>
+          <div className="text-xs text-slate-400">Current</div>
+        </div>
+        <div className="bg-slate-800 rounded-xl p-3 text-center">
+          <div className={`text-xl font-bold ${gainKg === null ? 'text-slate-500' : gainKg >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+            {gainKg === null ? '—' : `${gainKg >= 0 ? '+' : ''}${gainKg.toFixed(2)} kg`}
+          </div>
+          <div className="text-xs text-slate-400">Total gain</div>
+        </div>
+        <div className="bg-slate-800 rounded-xl p-3 text-center">
+          <div className={`text-xl font-bold ${gainPerWeek === null ? 'text-slate-500' : gainPerWeek >= 0 ? 'text-green-400' : 'text-yellow-400'}`}>
+            {gainPerWeek === null ? '—' : `${gainPerWeek >= 0 ? '+' : ''}${gainPerWeek.toFixed(0)} g/w`}
+          </div>
+          <div className="text-xs text-slate-400">Rate</div>
+        </div>
       </div>
+
+      {/* Chart */}
+      <div className="bg-slate-800 rounded-xl p-4 mb-3">
+        <canvas ref={canvasRef} width={560} height={240}
+          className="w-full rounded-lg" style={{ imageRendering: 'crisp-edges' }} />
+      </div>
+
+      {/* Export — same style as feeds export */}
+      <button
+        onClick={() => {
+          const s2 = [...weights].sort((a,b) => a.timestamp - b.timestamp);
+          const csv = ['Date,Time,Weight (kg)',...s2.map(w => {
+            const d = new Date(w.timestamp);
+            return `${d.toLocaleDateString()},${d.toLocaleTimeString()},${w.weightKg}`;
+          })].join('\n');
+          const a = document.createElement('a');
+          a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+          a.download = 'weight-history.csv'; a.click();
+        }}
+        className="w-full bg-slate-700 hover:bg-slate-600 text-slate-200 font-medium py-3 rounded-xl transition-colors"
+      >
+        📥 Export Weight CSV
+      </button>
     </div>
   );
 }

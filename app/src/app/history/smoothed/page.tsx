@@ -176,7 +176,7 @@ export default function SmoothedHistoryPage() {
 
   return (
     <div className="max-w-lg mx-auto px-4 pt-6 pb-24">
-      <Link href="/" className="text-blue-400 hover:text-blue-300 text-xs mb-4 block">← Back</Link>
+      <Link href="/" className="text-blue-400 hover:text-blue-300 text-xs mb-4 block">← Back to dashboard</Link>
       <h1 className="text-xl font-bold text-slate-100 mb-1">Smoothed intake — 3 days</h1>
       {settings && derived && (
         <p className="text-xs text-slate-400 mb-4">

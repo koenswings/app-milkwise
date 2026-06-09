@@ -101,15 +101,17 @@ export default function NextFeedInfoPage() {
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-slate-400">Time correction</span>
-                    <span className={`font-semibold tabular-nums ${live.clampedMin > 0 ? 'text-yellow-400' : live.clampedMin < 0 ? 'text-blue-400' : 'text-green-400'}`}>
-                      {live.clampedMin === 0 ? 'none' : live.clampedMin > 0 ? `+${live.clampedMin} min` : `${live.clampedMin} min`}
+                    <span className="text-slate-400">Time correction (uncapped)</span>
+                    <span className={`font-semibold tabular-nums ${live.rawCorrectionMin > 0 ? 'text-yellow-400' : live.rawCorrectionMin < 0 ? 'text-blue-400' : 'text-green-400'}`}>
+                      {live.rawCorrectionMin === 0 ? 'none' : live.rawCorrectionMin > 0 ? `+${live.rawCorrectionMin} min` : `${live.rawCorrectionMin} min`}
                     </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-slate-400">Cap (±{live.maxCorrectionMin} min)</span>
-                    <span className={`font-semibold ${live.capped ? 'text-orange-400' : 'text-slate-500'}`}>
-                      {live.capped ? 'applied' : 'not needed'}
+                    <span className={`font-semibold tabular-nums ${live.capped ? 'text-orange-400' : 'text-slate-500'}`}>
+                      {live.capped
+                        ? `applied → ${live.clampedMin > 0 ? '+' : ''}${live.clampedMin} min`
+                        : `not applied (${live.clampedMin > 0 ? '+' : ''}${live.clampedMin} min)`}
                     </span>
                   </div>
                   <div className="flex justify-between pt-1 border-t border-slate-700">

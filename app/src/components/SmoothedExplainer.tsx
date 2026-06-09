@@ -25,9 +25,8 @@ export default function SmoothedExplainer({ onClose, hourlyRate, standardBottleV
         className="bg-slate-800 rounded-2xl p-6 max-w-lg w-full max-h-[85vh] overflow-y-auto mt-16 sm:mt-4"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-bold text-slate-100">Smoothed 24h — how it works</h2>
-          <button onClick={onClose} className="text-blue-400 hover:text-blue-300 text-sm">← Back</button>
+        <div className="mb-4">
+          <button onClick={onClose} className="text-blue-400 hover:text-blue-300 text-sm">← Back to dashboard</button>
         </div>
 
         <div className="space-y-5 text-base text-slate-300 leading-relaxed mt-2">
@@ -104,7 +103,7 @@ export default function SmoothedExplainer({ onClose, hourlyRate, standardBottleV
             </p>
           </section>
 
-          <button onClick={onClose} className="mt-2 w-full text-center text-blue-400 hover:text-blue-300 text-sm py-2">← Back</button>
+          <button onClick={onClose} className="mt-2 w-full text-center text-blue-400 hover:text-blue-300 text-sm py-2">← Back to dashboard</button>
         </div>
       </div>
     </div>
