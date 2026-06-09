@@ -10,7 +10,6 @@ export default function Strict24hExplainer({ onClose }: Props) {
   return (
     <div className="fixed inset-0 bg-black/70 z-50 flex items-end sm:items-center justify-center p-4">
       <div className="bg-slate-900 rounded-2xl w-full max-w-lg max-h-[80vh] overflow-y-auto shadow-2xl mt-16 sm:mt-4">
-        {/* Header */}
         <div className="flex items-center justify-between p-5 border-b border-slate-700">
           <h2 className="text-lg font-semibold text-slate-100">Strict 24h — how it works</h2>
           <button onClick={onClose} className="text-blue-400 hover:text-blue-300 text-sm">← Back</button>
@@ -18,71 +17,38 @@ export default function Strict24hExplainer({ onClose }: Props) {
 
         <div className="p-5 space-y-5 text-base text-slate-300 leading-relaxed mt-2">
 
-          {/* What it is */}
           <section>
             <h3 className="text-slate-100 font-semibold mb-1">What is this?</h3>
             <p>
-              The <span className="text-white font-medium">Strict 24h</span> value is the sum of all milk
-              your baby actually drank in the last 24 hours — counted from the moment the most recent
-              feed was logged.
+              The <strong>Strict 24h</strong> value is the sum of all milk given in the last
+              24 hours, counted from the most recent feed:
             </p>
-            <p className="mt-2">
-              This is the method paediatricians and health visitors commonly use to check whether a
-              baby is getting enough nutrition over a day.
-            </p>
-          </section>
-
-          {/* The problem */}
-          <section>
-            <h3 className="text-slate-100 font-semibold mb-1">Why it fluctuates so much</h3>
-            <p>
-              Because it uses a hard 24-hour cutoff, the number can drop sharply the moment a feed
-              "falls off" the window — even if the baby is perfectly well fed. A large bottle logged
-              25 hours ago contributes <span className="text-white font-medium">zero</span>, while
-              the same bottle at 23 hours ago contributes its full volume.
-            </p>
-            <p className="mt-2">
-              This makes it hard to use in practice for parents trying to actively manage feeds
-              throughout the day. A single nap that pushes a feed past the 24-hour mark can make the
-              number look alarming.
-            </p>
-            <p className="mt-2 text-slate-400">
-              That's why this app also shows the{" "}
-              <span className="text-slate-300 font-medium">Smoothed 24h</span> value, which gives
-              each bottle a gradually decaying credit instead of a hard cutoff.
-            </p>
-          </section>
-
-          {/* Formula */}
-          <section>
-            <h3 className="text-slate-100 font-semibold mb-1">The formula</h3>
-            <div className="bg-slate-800 rounded-lg p-3 font-mono text-xs text-slate-300">
-              Strict 24h = Σ volume of all feeds logged in the last 24 hours
+            <div className="bg-slate-800 rounded-lg p-3 mt-2 font-mono text-xs text-slate-300">
+              strict(T) = Σ milkMl_i &nbsp; for all feeds where age ≤ 24h
             </div>
           </section>
 
-          {/* Water vs milk — placed after the formula for context */}
           <section>
-            <h3 className="text-slate-100 font-semibold mb-1">Water ml vs. prepared formula ml</h3>
+            <h3 className="text-slate-100 font-semibold mb-1">Why it fluctuates</h3>
             <p>
-              You log bottles in <strong>water ml</strong>. But the 150 ml/kg/day target is in
-              <strong> prepared formula ml</strong> (after mixing powder + water).
-              The conversion ratio varies by bottle size. Values in the table are exact; anything in between is interpolated (e.g. a 105 ml bottle → {waterToMilk(105).toFixed(0)} ml formula).
-              The app converts all logged volumes automatically.
+              This formula has a hard 24-hour cutoff. A bottle disappears entirely the moment
+              it crosses the 24h mark — even if it was given 23h59m ago and contributed its
+              full value one second earlier. This causes sudden large drops in the value.
+            </p>
+            <p className="mt-2 text-slate-400">
+              The <strong className="text-slate-300">Smoothed 24h</strong> value improves on
+              this by giving partial credit to bottles just outside the 24h window, producing
+              a much smoother picture.
             </p>
           </section>
 
-          {/* External link */}
           <section>
-            <h3 className="text-slate-100 font-semibold mb-1">Further reading</h3>
-            <a
-              href="https://parentingprospect.com/formula-feeding-calculator/"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-blue-400 hover:text-blue-300 underline break-all"
-            >
-              Formula feeding calculator — based on WHO/CDC average recommendations
-            </a>
+            <h3 className="text-slate-100 font-semibold mb-1">Water ml vs milk ml</h3>
+            <p>
+              The conversion ratio varies by bottle size (e.g. 90 ml water →{' '}
+              <strong className="text-slate-200">{waterToMilk(90).toFixed(0)} ml</strong> formula).
+              The app interpolates from a manufacturer table and converts all logged volumes automatically.
+            </p>
           </section>
 
           <button onClick={onClose} className="w-full text-center text-blue-400 hover:text-blue-300 text-sm py-2">← Back</button>
