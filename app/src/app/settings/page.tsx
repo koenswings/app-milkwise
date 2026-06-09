@@ -215,7 +215,7 @@ export default function SettingsPage() {
                 settings.useTargetAwarePredictor ? 'bg-blue-600 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
               }`}
             >
-              Predictor 3 (T*)
+              Predictor 3 — Optimised
             </button>
             <button
               type="button"
@@ -224,7 +224,7 @@ export default function SettingsPage() {
                 !settings.useTargetAwarePredictor ? 'bg-blue-600 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
               }`}
             >
-              Predictor 2 (Formula S)
+              Predictor 2 — Adjusted
             </button>
           </div>
           <p className="text-xs text-slate-500 mt-2">

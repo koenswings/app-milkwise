@@ -15,10 +15,17 @@ function fmtRel(ms: number, now: number): string {
 
 export default function NextFeedInfoPage() {
   const [live, setLive] = useState<{
-    surplusMl: number; rawCorrectionMin: number; clampedMin: number;
-    capped: boolean; adjustedTs: number; standardTs: number;
-    standardIntervalMin: number; maxCorrectionMin: number;
-    lastBottleVolume: number; timeFormat: '24h'|'12h';
+    surplusMl: number;
+    rawCorrectionMin: number;
+    clampedMin: number;
+    capped: boolean;
+    adjustedTs: number;
+    standardTs: number;
+    standardIntervalMin: number;
+    maxCorrectionMin: number;
+    lastBottleVolume: number;
+    timeFormat: '24h'|'12h';
+    useP3: boolean;
   } | null>(null);
   const [now] = useState(Date.now());
 
@@ -54,6 +61,7 @@ export default function NextFeedInfoPage() {
         maxCorrectionMin: Math.round(maxCorrectionMs / 60_000),
         lastBottleVolume: lastFeed.volume,
         timeFormat: settings.timeFormat,
+        useP3: settings.useTargetAwarePredictor !== false,
       });
     })();
   }, []);
@@ -65,80 +73,109 @@ export default function NextFeedInfoPage() {
       <h1 className="text-2xl font-bold text-slate-100 mb-1">Adjusted next feed</h1>
       <p className="text-slate-400 text-xs mb-6">How the predicted time is calculated</p>
 
-      {/* Live breakdown */}
       {live && (
-        <div className={`rounded-xl border p-4 mb-6 ${live.surplusMl >= 0 ? 'border-yellow-700/50 bg-yellow-900/10' : 'border-blue-700/50 bg-blue-900/10'}`}>
-          <div className="text-xs uppercase tracking-wide text-slate-400 mb-3">Right now</div>
-          <div className="space-y-2 text-sm">
-            <div className="flex justify-between">
-              <span className="text-slate-400">{live.surplusMl >= 0 ? 'Overfed by' : 'Underfed by'}</span>
-              <span className={`font-semibold ${live.surplusMl >= 0 ? 'text-yellow-400' : 'text-blue-400'}`}>
-                {Math.abs(Math.round(live.surplusMl))} ml
-              </span>
+        <>
+          {/* Active predictor explanation */}
+          {live.useP3 ? (
+            <div className="space-y-3 mb-6">
+              <h2 className="text-slate-100 font-semibold">Predictor 3 — Optimised</h2>
+              <p>
+                Finds the exact time T* at which giving the next bottle would bring the baby
+                back to exactly the daily target — zero surplus, zero deficit.
+              </p>
+              <div className="bg-slate-800 rounded-lg p-3 font-mono text-xs text-slate-300 whitespace-pre">{`smoothed(T*) + milkPerBottle = dailyTarget`}</div>
+              <p className="text-slate-400">
+                As time passes, older bottles lose energy credit. T* is the moment when the
+                remaining credits have decayed to exactly <em>dailyTarget − milkPerBottle</em>,
+                so the next bottle fills the balance to exactly target.
+              </p>
+
+              {/* Current situation */}
+              <div className={`rounded-xl border p-4 mt-2 ${live.surplusMl >= 0 ? 'border-yellow-700/50 bg-yellow-900/10' : 'border-blue-700/50 bg-blue-900/10'}`}>
+                <div className="text-xs uppercase tracking-wide text-slate-400 mb-2">For this feed</div>
+                <div className="space-y-1.5 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">{live.surplusMl >= 0 ? 'Overfed by' : 'Underfed by'}</span>
+                    <span className={`font-semibold ${live.surplusMl >= 0 ? 'text-yellow-400' : 'text-blue-400'}`}>
+                      {Math.abs(Math.round(live.surplusMl))} ml
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Time correction</span>
+                    <span className={`font-semibold tabular-nums ${live.clampedMin > 0 ? 'text-yellow-400' : live.clampedMin < 0 ? 'text-blue-400' : 'text-green-400'}`}>
+                      {live.clampedMin === 0 ? 'none' : live.clampedMin > 0 ? `+${live.clampedMin} min` : `${live.clampedMin} min`}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Cap (±{live.maxCorrectionMin} min)</span>
+                    <span className={`font-semibold ${live.capped ? 'text-orange-400' : 'text-slate-500'}`}>
+                      {live.capped ? 'applied' : 'not needed'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between pt-1 border-t border-slate-700">
+                    <span className="text-slate-300 font-medium">Adjusted next feed</span>
+                    <span className="text-blue-300 font-bold">
+                      {formatDateTime(live.adjustedTs, live.timeFormat)}{' '}
+                      <span className="text-slate-500 font-normal text-xs">{fmtRel(live.adjustedTs, now)}</span>
+                    </span>
+                  </div>
+                </div>
+              </div>
             </div>
-            <div className="flex justify-between">
-              <span className="text-slate-400">24h surplus</span>
-              <span className={`font-semibold tabular-nums ${live.surplusMl >= 0 ? 'text-yellow-400' : 'text-blue-400'}`}>
-                {live.surplusMl >= 0 ? '+' : ''}{Math.round(live.surplusMl)} ml
-              </span>
+          ) : (
+            <div className="space-y-3 mb-6">
+              <h2 className="text-slate-100 font-semibold">Predictor 2 — Adjusted</h2>
+              <p>
+                Compares the smoothed 24h intake to the daily target. The difference
+                (surplus or deficit) is translated into a time correction that shifts
+                the standard next feed time earlier or later.
+              </p>
+              <div className="bg-slate-800 rounded-lg p-3 font-mono text-xs text-slate-300 whitespace-pre">{`surplus    = smoothed − dailyTarget
+correction = surplus / hourlyRate  (capped ±${live.maxCorrectionMin} min)
+adjusted   = standard + correction`}</div>
+
+              {/* Current situation */}
+              <div className={`rounded-xl border p-4 mt-2 ${live.surplusMl >= 0 ? 'border-yellow-700/50 bg-yellow-900/10' : 'border-blue-700/50 bg-blue-900/10'}`}>
+                <div className="text-xs uppercase tracking-wide text-slate-400 mb-2">For this feed</div>
+                <div className="space-y-1.5 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">{live.surplusMl >= 0 ? 'Overfed by' : 'Underfed by'}</span>
+                    <span className={`font-semibold ${live.surplusMl >= 0 ? 'text-yellow-400' : 'text-blue-400'}`}>
+                      {Math.abs(Math.round(live.surplusMl))} ml
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Surplus compensation</span>
+                    <span className={`font-semibold tabular-nums ${live.rawCorrectionMin > 0 ? 'text-yellow-400' : live.rawCorrectionMin < 0 ? 'text-blue-400' : 'text-green-400'}`}>
+                      {live.rawCorrectionMin === 0 ? 'none' : live.rawCorrectionMin > 0 ? `+${live.rawCorrectionMin} min` : `${live.rawCorrectionMin} min`}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Cap (±{live.maxCorrectionMin} min)</span>
+                    <span className={`font-semibold ${live.capped ? 'text-orange-400' : 'text-slate-500'}`}>
+                      {live.capped ? `applied → ${live.clampedMin > 0 ? '+' : ''}${live.clampedMin} min` : 'not needed'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between pt-1 border-t border-slate-700">
+                    <span className="text-slate-300 font-medium">Adjusted next feed</span>
+                    <span className="text-blue-300 font-bold">
+                      {formatDateTime(live.adjustedTs, live.timeFormat)}{' '}
+                      <span className="text-slate-500 font-normal text-xs">{fmtRel(live.adjustedTs, now)}</span>
+                    </span>
+                  </div>
+                </div>
+              </div>
             </div>
-            <div className="flex justify-between">
-              <span className="text-slate-400">Standard interval (last {live.lastBottleVolume}ml bottle)</span>
-              <span className="text-slate-300 tabular-nums">{live.standardIntervalMin} min</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-slate-400">Raw correction needed</span>
-              <span className={`font-semibold tabular-nums ${live.rawCorrectionMin > 0 ? 'text-yellow-400' : live.rawCorrectionMin < 0 ? 'text-blue-400' : 'text-slate-400'}`}>
-                {live.rawCorrectionMin === 0 ? 'none' : live.rawCorrectionMin > 0 ? `+${live.rawCorrectionMin} min` : `${live.rawCorrectionMin} min`}
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-slate-400">Cap (±{live.maxCorrectionMin} min)</span>
-              <span className={`font-semibold tabular-nums ${live.capped ? 'text-orange-400' : 'text-slate-500'}`}>
-                {live.capped ? `applied → ${live.clampedMin > 0 ? '+' : ''}${live.clampedMin} min` : 'not applied'}
-              </span>
-            </div>
-            <div className="flex justify-between pt-1 border-t border-slate-700">
-              <span className="text-slate-300 font-medium">Next (standard)</span>
-              <span className="text-slate-300 font-bold">{formatDateTime(live.standardTs, live.timeFormat)} <span className="text-slate-500 font-normal text-xs">{fmtRel(live.standardTs, now)}</span></span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-slate-300 font-medium">Adjusted</span>
-              <span className="text-blue-300 font-bold">{formatDateTime(live.adjustedTs, live.timeFormat)} <span className="text-slate-500 font-normal text-xs">{fmtRel(live.adjustedTs, now)}</span></span>
-            </div>
-          </div>
-        </div>
+          )}
+        </>
       )}
 
-      {/* Explanation */}
-      <h2 className="text-slate-100 font-semibold mt-4 mb-2">Predictor 1 — Standard</h2>
-      <p className="mb-3">The standard time answers: <em>when has the energy from the last bottle been fully consumed?</em></p>
-      <div className="bg-slate-800 rounded-lg p-3 font-mono text-xs text-slate-300 mb-4 whitespace-pre">{`standard = lastFeed + waterToMilk(lastFeed.volume) / hourlyRate`}</div>
+      {!live && (
+        <p className="text-slate-400">Loading…</p>
+      )}
 
-      <h2 className="text-slate-100 font-semibold mt-4 mb-2">Predictor 2 — Adjusted</h2>
-      <p className="mb-2">Compares the smoothed 24h intake to the daily target to find the surplus or deficit, then shifts the standard time proportionally:</p>
-      <div className="bg-slate-800 rounded-lg p-3 font-mono text-xs text-slate-300 mb-3 whitespace-pre">{`surplus     = smoothed − dailyTarget
-correction  = surplus / hourlyRate  (capped ±maxCorrectionPct%)
-adjusted    = standard + correction`}</div>
-      <ul className="list-disc pl-5 space-y-1 mb-4 text-slate-400">
-        <li><strong className="text-yellow-400">surplus &gt; 0</strong> — overfed → correction &gt; 0 → adjusted later</li>
-        <li><strong className="text-blue-400">surplus &lt; 0</strong> — underfed → correction &lt; 0 → adjusted earlier</li>
-      </ul>
-
-      <h2 className="text-slate-100 font-semibold mt-4 mb-2">Predictor 3 — Optimised</h2>
-      <p className="mb-2">
-        Finds the exact time T* where giving a standard bottle produces <strong>zero surplus</strong>:
-      </p>
-      <div className="bg-slate-800 rounded-lg p-3 font-mono text-xs text-slate-300 mb-3 whitespace-pre">{`smoothed(T*) + milkPerBottle = dailyTarget`}</div>
-      <p className="mb-4 text-slate-400">
-        Binary search over [lastFeed, lastFeed + cap] finds T* precisely.
-        If the baby is already underfed at the last feed, T* = now (give immediately).
-        If still overfed at the cap boundary, the cap applies.
-      </p>
-
-      <div className="bg-slate-800 rounded-xl p-4 mt-4">
-        <p className="text-slate-200 font-medium mb-1">Which predictor is active?</p>
-        <p className="text-slate-400 text-xs">
+      <div className="bg-slate-800 rounded-xl p-4 mt-2">
+        <p className="text-slate-500 text-xs">
           You can switch between Predictor 2 and Predictor 3 in Settings.
           Predictor 3 (default) guarantees zero surplus after the next feed if the cap allows it.
         </p>

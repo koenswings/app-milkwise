@@ -130,7 +130,24 @@ function WeightChart({ weights }: { weights: WeightEntry[] }) {
     <div className="bg-slate-800 rounded-xl p-4 mb-4">
       <canvas ref={canvasRef} width={560} height={260}
         className="w-full rounded-lg" style={{ imageRendering: 'crisp-edges' }} />
-      <p className="text-xs text-slate-500 mt-1">{weights.length} weight entr{weights.length === 1 ? 'y' : 'ies'} recorded. Add more from the dashboard ⚖️ button.</p>
+      <div className="flex items-center justify-between mt-2">
+        <p className="text-xs text-slate-500">{weights.length} weight entr{weights.length === 1 ? 'y' : 'ies'} recorded.</p>
+        <button
+          onClick={() => {
+            const sorted = [...weights].sort((a,b) => a.timestamp - b.timestamp);
+            const csv = ['Date,Time,Weight (kg)',...sorted.map(w => {
+              const d = new Date(w.timestamp);
+              return `${d.toLocaleDateString()},${d.toLocaleTimeString()},${w.weightKg}`;
+            })].join('\n');
+            const a = document.createElement('a');
+            a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+            a.download = 'weight-history.csv'; a.click();
+          }}
+          className="text-xs text-blue-400 hover:text-blue-300 px-2 py-1 bg-slate-700 rounded"
+        >
+          ⬇️ Export CSV
+        </button>
+      </div>
     </div>
   );
 }
@@ -198,7 +215,7 @@ export default function AnalyticsPage() {
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-sm font-semibold text-slate-300">Energy surplus / deficit</h2>
           <div className="flex gap-1">
-            {[7,30].map(d => (
+            {[3,7,30].map(d => (
               <button key={d} onClick={() => setDays(d)}
                 className={`px-3 py-1 rounded text-sm ${days === d ? 'bg-blue-600 text-white' : 'bg-slate-700 text-slate-400'}`}>
                 {d}d
