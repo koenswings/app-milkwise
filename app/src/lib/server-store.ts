@@ -18,6 +18,7 @@ const DEFAULT_SETTINGS: Settings = {
   redThresholdPct: 10,
   timeFormat: '24h' as const,
   maxCorrectionPct: 25,
+  useTargetAwarePredictor: true,
 };
 
 function ensureDir() {

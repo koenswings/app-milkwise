@@ -17,6 +17,7 @@ export default function SettingsPage() {
     timeFormat: '24h',
     displayBottleVolumeWater: 90,
     maxCorrectionPct: 25,
+    useTargetAwarePredictor: true,
   });
   const [saved, setSaved] = useState(false);
   // Local string values so inputs don't snap back while typing (e.g. clearing "90" to type "120")
@@ -201,6 +202,33 @@ export default function SettingsPage() {
           />
           <p className="text-xs text-slate-500 mt-2">
             Max shift of adjusted next feed = ±this % of ideal interval. 25% of 148min = ±37min. Default: 25.
+          </p>
+        </div>
+
+        <div className="bg-slate-800 rounded-xl p-4">
+          <label className="block text-sm text-slate-400 mb-2">Next feed predictor</label>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => setSettings((prev) => ({ ...prev, useTargetAwarePredictor: true }))}
+              className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                settings.useTargetAwarePredictor ? 'bg-blue-600 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+              }`}
+            >
+              Predictor 3 (T*)
+            </button>
+            <button
+              type="button"
+              onClick={() => setSettings((prev) => ({ ...prev, useTargetAwarePredictor: false }))}
+              className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                !settings.useTargetAwarePredictor ? 'bg-blue-600 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+              }`}
+            >
+              Predictor 2 (Formula S)
+            </button>
+          </div>
+          <p className="text-xs text-slate-500 mt-2">
+            T*: guarantees zero surplus after next feed (if not capped). Formula S: fast approximation.
           </p>
         </div>
 

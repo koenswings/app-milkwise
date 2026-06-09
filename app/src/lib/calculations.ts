@@ -145,42 +145,107 @@ export function feedsWithCredit(
 }
 
 /**
- * Next bottle predictor — Option A (design doc: next-session-predictor-design.md)
+ * Compute smoothed total at a given reference time T, for Predictor 3.
+ * Uses the same bottle_credit formula as smoothedEffective.
+ */
+function smoothedAtTime(feeds: Feed[], hourlyRate: number, atMs: number): number {
+  return feeds.reduce((sum, f) => {
+    const ageHours = (atMs - f.timestamp) / 3_600_000;
+    return sum + bottleCredit(ageHours, waterToMilk(f.volume), hourlyRate);
+  }, 0);
+}
+
+/**
+ * Predictor 3 — Target-aware adjusted next bottle (T*)
  *
- * Standard: when does the energy from the last logged bottle run out?
- *   standardNext = lastFeed.timestamp + waterToMilk(lastFeed.volume) / hourlyRate
+ * Find T* such that smoothed(T*) = dailyTargetMl − milkPerBottle.
+ * Giving a standard bottle at T* produces smoothed = dailyTargetMl exactly (if not capped).
  *
- * Adjusted: standard + correction for 24h over/underfeeding, capped at ±maxCorrectionPct%
- *   surplus      = smoothedTotal − dailyTargetMl
- *   correction   = surplus / hourlyRate (capped)
- *   adjustedNext = standardNext + clampedCorrection
+ * Uses binary search over [lastFeed, lastFeed + maxCorrectionMs].
+ * Falls back to T_min when underfed (smoothed already below target − bottle).
+ */
+function findTargetAwareNext(
+  feeds: Feed[],
+  hourlyRate: number,
+  dailyTargetMl: number,
+  lastFeed: Feed,
+  standardNext: number,
+  maxCorrectionMs: number
+): { timestamp: number; capped: boolean } {
+  const milkPerBottle = waterToMilk(lastFeed.volume);
+  const targetBefore = dailyTargetMl - milkPerBottle;
+  const T_min = lastFeed.timestamp;
+  const T_max = standardNext + maxCorrectionMs;
+
+  const s_min = smoothedAtTime(feeds, hourlyRate, T_min);
+
+  // Underfed: smoothed already ≤ target-before-feed → give now
+  if (s_min <= targetBefore) {
+    return { timestamp: T_min, capped: false };
+  }
+
+  const s_max = smoothedAtTime(feeds, hourlyRate, T_max);
+
+  // Still overfed at max gap → cap applies
+  if (s_max > targetBefore) {
+    return { timestamp: T_max, capped: true };
+  }
+
+  // Binary search for T* where smoothed(T*) = targetBefore
+  let lo = T_min, hi = T_max;
+  for (let i = 0; i < 30; i++) {
+    const mid = Math.floor((lo + hi) / 2);
+    if (smoothedAtTime(feeds, hourlyRate, mid) > targetBefore) {
+      lo = mid;
+    } else {
+      hi = mid;
+    }
+    if (hi - lo < 60_000) break; // 1-minute precision
+  }
+  return { timestamp: Math.floor((lo + hi) / 2), capped: false };
+}
+
+/**
+ * Next bottle predictor (design doc: next-session-predictor-design.md)
  *
- * The parent logs the START time of the bottle and the TOTAL milk given.
- * The timestamp on the feed record is the start of the session.
+ * Standard: standardNext = lastFeed.timestamp + waterToMilk(lastFeed.volume) / hourlyRate
+ *
+ * Predictor 2 (Formula S): adjustedNext = standard + clamp(surplus/hourlyRate, ±max)
+ * Predictor 3 (T*, default): binary search for T* where smoothed(T*) = target − bottle
+ *
+ * settings.useTargetAwarePredictor controls which is used.
  */
 export function nextFeedTime(
   feeds: Feed[],
   hourlyRate: number,
   smoothedTotal: number,
   dailyTargetMl: number,
-  settings: Pick<Settings, 'maxCorrectionPct'>
+  settings: Pick<Settings, 'maxCorrectionPct' | 'useTargetAwarePredictor'>
 ): NextFeedResult | null {
   if (feeds.length === 0) return null;
 
   const lastFeed = feeds.reduce((a, b) => (a.timestamp > b.timestamp ? a : b));
-  const lastMilkMl = waterToMilk(lastFeed.volume);  // milk ml from last bottle
+  const lastMilkMl = waterToMilk(lastFeed.volume);
   const standardIntervalMs = (lastMilkMl / hourlyRate) * 3_600_000;
   const standardNext = lastFeed.timestamp + standardIntervalMs;
   const maxCorrectionMs = standardIntervalMs * (settings.maxCorrectionPct / 100);
 
-  const surplus = smoothedTotal - dailyTargetMl;
-  const rawCorrectionMs = (surplus / hourlyRate) * 3_600_000;
-  const clampedCorrection = Math.max(-maxCorrectionMs, Math.min(maxCorrectionMs, rawCorrectionMs));
-
-  const timestamp = standardNext + clampedCorrection;
-  const capped = Math.abs(clampedCorrection - rawCorrectionMs) > 1;
-
-  return { timestamp, balanceMl: Math.round(surplus), capped };
+  if (settings.useTargetAwarePredictor) {
+    // Predictor 3: T* binary search
+    const { timestamp, capped } = findTargetAwareNext(
+      feeds, hourlyRate, dailyTargetMl, lastFeed, standardNext, maxCorrectionMs
+    );
+    const surplus = smoothedTotal - dailyTargetMl;
+    return { timestamp, balanceMl: Math.round(surplus), capped };
+  } else {
+    // Predictor 2: Formula S
+    const surplus = smoothedTotal - dailyTargetMl;
+    const rawCorrectionMs = (surplus / hourlyRate) * 3_600_000;
+    const clampedCorrection = Math.max(-maxCorrectionMs, Math.min(maxCorrectionMs, rawCorrectionMs));
+    const timestamp = standardNext + clampedCorrection;
+    const capped = Math.abs(clampedCorrection - rawCorrectionMs) > 1;
+    return { timestamp, balanceMl: Math.round(surplus), capped };
+  }
 }
 
 export function avgIntervalHours(feeds: Feed[]): number | null {

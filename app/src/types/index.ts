@@ -14,6 +14,7 @@ export interface Settings {
   redThresholdPct: number;            // default 10
   timeFormat: '24h' | '12h';
   maxCorrectionPct: number;           // default 25
+  useTargetAwarePredictor: boolean;   // default true — Predictor 3 (T*). false = Predictor 2 (Formula S)
 }
 
 export interface NextFeedResult {
