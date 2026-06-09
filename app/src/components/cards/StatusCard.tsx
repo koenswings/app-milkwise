@@ -3,6 +3,7 @@
 import SwipeableCard from "@/components/SwipeableCard";
 import { waterToMilk } from "@/lib/calculations";
 import { Feed } from "@/types";
+import Link from "next/link";
 
 interface Props {
   strict24h: number;
@@ -312,6 +313,27 @@ function EmojiBalanceView({ smoothedMl, smoothedPct, dailyTargetMl, yellowThresh
   );
 }
 
+// ── History link view ──────────────────────────────────────────────────────────
+function HistoryLinkView({ pct, ml, y, r }: { pct: number; ml: number; y: number; r: number }) {
+  const diff = Math.abs(pct - 100);
+  const color = diff <= y ? '#4ade80' : diff <= r ? '#facc15' : '#f87171';
+  return (
+    <div className="rounded-xl border border-slate-700 p-4 text-center">
+      <div className="text-xs text-slate-400 uppercase tracking-wide mb-3">Smoothed intake — 3 days</div>
+      <div className="text-3xl font-bold tabular-nums mb-1" style={{ color }}>{Math.round(ml)} ml</div>
+      <div className="text-sm mb-4" style={{ color }}>{Math.round(pct)}%</div>
+      <Link
+        href="/history/smoothed"
+        className="inline-flex items-center gap-2 bg-slate-700 hover:bg-slate-600 text-slate-200 text-sm font-medium px-5 py-2.5 rounded-xl transition-colors"
+      >
+        <span>View 3-day graph</span>
+        <span className="text-slate-400">→</span>
+      </Link>
+      <div className="text-xs text-slate-600 mt-3">Tap to see smoothed intake over the last 3 days</div>
+    </div>
+  );
+}
+
 export default function StatusCard(props: Props) {
   const { strict24h, strictPct, smoothedMl, smoothedPct, standardBottleVolume, yellowThresholdPct: y, redThresholdPct: r } = props;
   const milkPerBottle = waterToMilk(standardBottleVolume);
@@ -337,6 +359,7 @@ export default function StatusCard(props: Props) {
         <BiDirectionalView key="bidir" {...props} />,
         <ThermometerView key="thermo" {...props} />,
         <EmojiBalanceView key="emoji" {...props} />,
+        <HistoryLinkView key="history" pct={smoothedPct} ml={smoothedMl} y={y} r={r} />,
       ]}
     />
   );
