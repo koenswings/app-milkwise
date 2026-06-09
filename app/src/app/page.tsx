@@ -138,7 +138,14 @@ export default function Dashboard() {
           ➕ Log Feed
         </Link>
         <button
-          onClick={() => { setNewWeightKg(settings.weightKg.toString()); setNewWeightTime(new Date().toISOString().slice(0,16)); setShowWeightModal(true); }}
+          onClick={() => {
+            const d = new Date();
+            const pad = (n: number) => String(n).padStart(2,'0');
+            const local = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+            setNewWeightKg(settings.weightKg.toString());
+            setNewWeightTime(local);
+            setShowWeightModal(true);
+          }}
           className="px-4 py-3 bg-slate-700 hover:bg-slate-600 text-slate-200 text-sm font-semibold rounded-xl transition-colors"
         >
           ⚖️ Weight
@@ -169,11 +176,16 @@ export default function Dashboard() {
               <button
                 onClick={async () => {
                   const kg = parseFloat(newWeightKg);
-                  if (!kg || kg <= 0) return;
+                  if (isNaN(kg) || kg <= 0) { alert('Please enter a valid weight'); return; }
                   const ts = newWeightTime ? new Date(newWeightTime).getTime() : Date.now();
-                  await addWeight({ timestamp: ts, weightKg: kg });
-                  setShowWeightModal(false);
-                  load();
+                  if (isNaN(ts)) { alert('Invalid date/time'); return; }
+                  try {
+                    await addWeight({ timestamp: ts, weightKg: kg });
+                    setShowWeightModal(false);
+                    await load();
+                  } catch(e) {
+                    alert('Save failed: ' + String(e));
+                  }
                 }}
                 className="flex-1 py-3 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-xl"
               >

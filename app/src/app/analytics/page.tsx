@@ -34,12 +34,114 @@ function TrendCanvas({ feeds, weights, days, dailyTargetMl, mlPerKgPerDay, fallb
   return <canvas ref={canvasRef} width={560} height={220} className="w-full rounded-lg" style={{ imageRendering: 'crisp-edges' }} />;
 }
 
+function WeightChart({ weights }: { weights: WeightEntry[] }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas || weights.length === 0) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const W = canvas.width, H = canvas.height;
+    const PAD_L = 52, PAD_R = 16, PAD_T = 30, PAD_B = 44;
+    const plotW = W - PAD_L - PAD_R, plotH = H - PAD_T - PAD_B;
+
+    const sorted = [...weights].sort((a, b) => a.timestamp - b.timestamp);
+    const T_START = sorted[0].timestamp;
+    const T_END = sorted[sorted.length - 1].timestamp + 86_400_000; // +1 day
+    const wMin = Math.min(...sorted.map(w => w.weightKg)) - 0.1;
+    const wMax = Math.max(...sorted.map(w => w.weightKg)) + 0.1;
+
+    const tx = (t: number) => PAD_L + ((t - T_START) / (T_END - T_START)) * plotW;
+    const ty = (w: number) => PAD_T + (1 - (w - wMin) / (wMax - wMin)) * plotH;
+
+    ctx.fillStyle = '#1e293b';
+    ctx.fillRect(0, 0, W, H);
+
+    // Grid
+    for (let w = Math.ceil(wMin * 10) / 10; w <= wMax; w = Math.round((w + 0.1) * 10) / 10) {
+      const y = ty(w);
+      ctx.strokeStyle = '#ffffff15'; ctx.lineWidth = 1; ctx.setLineDash([3, 3]);
+      ctx.beginPath(); ctx.moveTo(PAD_L, y); ctx.lineTo(PAD_L + plotW, y); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = '#475569'; ctx.font = '9px sans-serif'; ctx.textAlign = 'right';
+      ctx.fillText(w.toFixed(2), PAD_L - 4, y + 3);
+    }
+
+    // Month labels
+    const range = T_END - T_START;
+    const tickMs = range > 30 * 86_400_000 ? 7 * 86_400_000 : 86_400_000;
+    for (let t = Math.ceil(T_START / tickMs) * tickMs; t <= T_END; t += tickMs) {
+      const x = tx(t);
+      ctx.strokeStyle = '#ffffff10'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(x, PAD_T); ctx.lineTo(x, PAD_T + plotH); ctx.stroke();
+      ctx.fillStyle = '#475569'; ctx.font = '9px sans-serif'; ctx.textAlign = 'center';
+      ctx.fillText(new Date(t).toLocaleDateString([], { month: 'short', day: 'numeric' }), x, PAD_T + plotH + 14);
+    }
+
+    // Smooth curve (Catmull-Rom)
+    const n = sorted.length;
+    if (n >= 2) {
+      ctx.strokeStyle = '#34d399';
+      ctx.lineWidth = 2.5;
+      ctx.lineJoin = 'round';
+      ctx.beginPath();
+      ctx.moveTo(tx(sorted[0].timestamp), ty(sorted[0].weightKg));
+      for (let i = 0; i < n - 1; i++) {
+        const p0 = sorted[Math.max(0, i-1)], p1 = sorted[i],
+              p2 = sorted[i+1], p3 = sorted[Math.min(n-1, i+2)];
+        const cp1x = tx(p1.timestamp) + (tx(p2.timestamp) - tx(p0.timestamp)) / 6;
+        const cp1y = ty(p1.weightKg) + (ty(p2.weightKg) - ty(p0.weightKg)) / 6;
+        const cp2x = tx(p2.timestamp) - (tx(p3.timestamp) - tx(p1.timestamp)) / 6;
+        const cp2y = ty(p2.weightKg) - (ty(p3.weightKg) - ty(p1.weightKg)) / 6;
+        ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, tx(p2.timestamp), ty(p2.weightKg));
+      }
+      ctx.stroke();
+    }
+
+    // Dots + labels
+    sorted.forEach(w => {
+      const x = tx(w.timestamp), y = ty(w.weightKg);
+      ctx.fillStyle = '#34d399';
+      ctx.beginPath(); ctx.arc(x, y, 4, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#e2e8f0'; ctx.font = 'bold 10px sans-serif'; ctx.textAlign = 'center';
+      ctx.fillText(`${w.weightKg} kg`, x, y - 8);
+    });
+
+    // Axes
+    ctx.strokeStyle = '#334155'; ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(PAD_L, PAD_T); ctx.lineTo(PAD_L, PAD_T + plotH);
+    ctx.moveTo(PAD_L, PAD_T + plotH); ctx.lineTo(PAD_L + plotW, PAD_T + plotH);
+    ctx.stroke();
+
+    ctx.fillStyle = '#e2e8f0'; ctx.font = 'bold 12px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText('Weight over time', W / 2, 20);
+    ctx.fillStyle = '#64748b'; ctx.font = '10px sans-serif';
+    ctx.fillText('kg', PAD_L - 36, PAD_T + plotH / 2);
+  }, [weights]);
+
+  if (weights.length === 0) return (
+    <div className="bg-slate-800 rounded-xl p-8 text-center text-slate-400 mb-4">No weight entries yet. Use the ⚖️ button on the dashboard.</div>
+  );
+
+  return (
+    <div className="bg-slate-800 rounded-xl p-4 mb-4">
+      <canvas ref={canvasRef} width={560} height={260}
+        className="w-full rounded-lg" style={{ imageRendering: 'crisp-edges' }} />
+      <p className="text-xs text-slate-500 mt-1">{weights.length} weight entr{weights.length === 1 ? 'y' : 'ies'} recorded. Add more from the dashboard ⚖️ button.</p>
+    </div>
+  );
+}
+
 export default function AnalyticsPage() {
   const [feeds, setFeeds] = useState<Feed[]>([]);
   const [settings, setSettings] = useState<Settings | null>(null);
   const [derived, setDerived] = useState<DerivedSettings | null>(null);
   const [weights, setWeights] = useState<WeightEntry[]>([]);
   const [days, setDays] = useState(7);
+  const [analyticsTab, setAnalyticsTab] = useState<'intake'|'weight'>('intake');
   const [showConsistencyInfo, setShowConsistencyInfo] = useState(false);
 
   const load = useCallback(async () => {
@@ -78,12 +180,23 @@ export default function AnalyticsPage() {
 
   return (
     <div className="max-w-lg mx-auto px-4 pt-6 pb-24">
-      <h1 className="text-2xl font-bold text-slate-100 mb-6">📊 Analytics</h1>
+      <div className="flex items-center justify-between mb-4">
+        <h1 className="text-2xl font-bold text-slate-100">📊 Analytics</h1>
+        <div className="flex gap-1">
+          <button onClick={() => setAnalyticsTab('intake')} className={`px-3 py-1 rounded text-sm font-medium transition-colors ${analyticsTab==='intake' ? 'bg-blue-600 text-white' : 'bg-slate-700 text-slate-400'}`}>Intake</button>
+          <button onClick={() => setAnalyticsTab('weight')} className={`px-3 py-1 rounded text-sm font-medium transition-colors ${analyticsTab==='weight' ? 'bg-blue-600 text-white' : 'bg-slate-700 text-slate-400'}`}>Weight</button>
+        </div>
+      </div>
 
+      {analyticsTab === 'weight' && (
+        <WeightChart weights={weights} />
+      )}
+
+      {analyticsTab === 'intake' && <>
       {/* Trend chart */}
       <div className="bg-slate-800 rounded-xl p-4 mb-4">
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-sm font-semibold text-slate-300">Smoothed intake trend</h2>
+          <h2 className="text-sm font-semibold text-slate-300">Energy surplus / deficit</h2>
           <div className="flex gap-1">
             {[7,30].map(d => (
               <button key={d} onClick={() => setDays(d)}
@@ -247,6 +360,8 @@ export default function AnalyticsPage() {
       >
         📥 Export CSV
       </button>
+
+      </> }
 
       <BottomNav />
     </div>
