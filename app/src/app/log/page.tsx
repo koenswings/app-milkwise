@@ -1,14 +1,14 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { addFeed, getFeeds, generateId, getSettings } from "@/lib/store";
 import { formatDateTime } from "@/lib/formatTime";
 import { waterToMilk, milkToWater } from "@/lib/calculations";
 import { Feed, Settings } from "@/types";
 import BottomNav from "@/components/BottomNav";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
-const QUICK_VOLUMES = [60, 90, 120];
+const QUICK_VOLUMES = [30, 60, 90, 120, 150];
 
 function nowDateString(): string {
   const d = new Date();
@@ -23,15 +23,24 @@ function nowTimeString(): string {
   return d.toTimeString().slice(0, 5);
 }
 
-export default function LogPage() {
+function LogPageInner() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  // §3.6 Pre-fill bottle size from a ?recommend= query param
+  const recParam = Number(searchParams.get("recommend"));
+  const recStatus = searchParams.get("recStatus") ?? "optimal"; // "optimal" | "overfed" | "capped"
+  const hasRec = Number.isFinite(recParam) && recParam > 0;
+  const initialBottle = hasRec ? recParam : 90;
+
   const [date, setDate] = useState(nowDateString());
   const [time, setTime] = useState(nowTimeString());
-  const [bottleSize, setBottleSize] = useState<number>(90); // selected bottle size in water ml
-  const [volume, setVolume] = useState<string>(String(Math.round(waterToMilk(90)))); // milk ml
+  const [bottleSize, setBottleSize] = useState<number>(initialBottle); // selected bottle size in water ml
+  const [volume, setVolume] = useState<string>(String(Math.round(waterToMilk(initialBottle)))); // milk ml
   const [saving, setSaving] = useState(false);
   const [recentFeeds, setRecentFeeds] = useState<Feed[]>([]);
   const [settings, setSettings] = useState<Settings | null>(null);
+  const [recommendedSize, setRecommendedSize] = useState<number | null>(hasRec ? recParam : null);
 
   // Track whether user has manually edited date/time
   const [dateEdited, setDateEdited] = useState(false);
@@ -101,20 +110,32 @@ export default function LogPage() {
                 onClick={() => {
                   setBottleSize(v);
                   setVolume(String(Math.round(waterToMilk(v))));
+                  // Parent picked a different size → recommendation overridden
+                  if (v !== recommendedSize) setRecommendedSize(null);
                 }}
-                className={`flex-1 py-3 rounded-lg font-semibold transition-colors ${
+                className={`relative flex-1 py-3 rounded-lg font-semibold transition-colors ${
                   bottleSize === v
                     ? "bg-blue-600 text-white"
                     : "bg-slate-700 text-slate-300 hover:bg-slate-600"
                 }`}
               >
                 {v} ml
+                {recommendedSize === v && <span className="ml-1 text-green-400">✓</span>}
               </button>
             ))}
           </div>
           <p className="text-xs text-slate-500 mt-1">
             {bottleSize} ml water → {Math.round(waterToMilk(bottleSize))} ml milk
           </p>
+          {recommendedSize !== null && (
+            <p className={`text-xs mt-1 ${recStatus === 'overfed' ? 'text-amber-400' : 'text-green-400'}`}>
+              {recStatus === 'overfed'
+                ? `Baby is above daily target. Smallest bottle: ${recommendedSize} ml water = ${Math.round(waterToMilk(recommendedSize))} ml milk.`
+                : recStatus === 'capped'
+                ? `Large deficit — even a full ${recommendedSize} ml water (${Math.round(waterToMilk(recommendedSize))} ml milk) won't fully cover it.`
+                : `${recommendedSize} ml water = ${Math.round(waterToMilk(recommendedSize))} ml milk — brings baby closest to daily target.`}
+            </p>
+          )}
         </div>
 
         {/* Milk amount — pre-filled, editable if baby didn’t finish */}
@@ -183,5 +204,13 @@ export default function LogPage() {
 
       <BottomNav />
     </div>
+  );
+}
+
+export default function LogPage() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center h-screen"><div className="text-slate-400">Loading…</div></div>}>
+      <LogPageInner />
+    </Suspense>
   );
 }

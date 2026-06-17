@@ -148,7 +148,7 @@ export function feedsWithCredit(
  * Compute smoothed total at a given reference time T, for Predictor 3.
  * Uses the same bottle_credit formula as smoothedEffective.
  */
-function smoothedAtTime(feeds: Feed[], hourlyRate: number, atMs: number): number {
+export function smoothedAtTime(feeds: Feed[], hourlyRate: number, atMs: number): number {
   return feeds.reduce((sum, f) => {
     const ageHours = (atMs - f.timestamp) / 3_600_000;
     return sum + bottleCredit(ageHours, waterToMilk(f.volume), hourlyRate);
@@ -170,10 +170,10 @@ function findTargetAwareNext(
   dailyTargetMl: number,
   lastFeed: Feed,
   standardNext: number,
-  maxCorrectionMs: number
+  maxCorrectionMs: number,
+  nextBottleMilkMl: number
 ): { timestamp: number; capped: boolean } {
-  const milkPerBottle = waterToMilk(lastFeed.volume);
-  const targetBefore = dailyTargetMl - milkPerBottle;
+  const targetBefore = dailyTargetMl - nextBottleMilkMl;
   const T_min = lastFeed.timestamp;
   const T_max = standardNext + maxCorrectionMs;
 
@@ -220,20 +220,23 @@ export function nextFeedTime(
   hourlyRate: number,
   smoothedTotal: number,
   dailyTargetMl: number,
-  settings: Pick<Settings, 'maxCorrectionPct' | 'useTargetAwarePredictor'>
+  settings: Pick<Settings, 'maxCorrectionPct' | 'useTargetAwarePredictor' | 'nextBottleWaterMl'>
 ): NextFeedResult | null {
   if (feeds.length === 0) return null;
 
   const lastFeed = feeds.reduce((a, b) => (a.timestamp > b.timestamp ? a : b));
-  const lastMilkMl = waterToMilk(lastFeed.volume);
-  const standardIntervalMs = (lastMilkMl / hourlyRate) * 3_600_000;
+  // Use the NEXT bottle size for the standard interval and T_max window.
+  // P3 is planning when to give the next bottle — its interval is how long that
+  // bottle lasts, not how long the last bottle lasted.
+  const nextBottleMilkMl = waterToMilk(settings.nextBottleWaterMl);
+  const standardIntervalMs = (nextBottleMilkMl / hourlyRate) * 3_600_000;
   const standardNext = lastFeed.timestamp + standardIntervalMs;
   const maxCorrectionMs = standardIntervalMs * (settings.maxCorrectionPct / 100);
 
   if (settings.useTargetAwarePredictor) {
     // Predictor 3: T* binary search
     const { timestamp, capped } = findTargetAwareNext(
-      feeds, hourlyRate, dailyTargetMl, lastFeed, standardNext, maxCorrectionMs
+      feeds, hourlyRate, dailyTargetMl, lastFeed, standardNext, maxCorrectionMs, nextBottleMilkMl
     );
     const surplus = smoothedTotal - dailyTargetMl;
     return { timestamp, balanceMl: Math.round(surplus), capped };
@@ -246,6 +249,42 @@ export function nextFeedTime(
     const capped = Math.abs(clampedCorrection - rawCorrectionMs) > 1;
     return { timestamp, balanceMl: Math.round(surplus), capped };
   }
+}
+
+/**
+ * Inverse predictor: given feeding right now, what bottle size is optimal?
+ * Returns the recommended water ml (snapped to nearest standard FORMULA_TABLE entry).
+ */
+export function bestBottleSizeNow(
+  feeds: Feed[],
+  hourlyRate: number,
+  dailyTargetMl: number,
+  now: number
+): { waterMl: number; milkMl: number; status: "optimal" | "overfed" | "capped"; deficitMl: number } {
+  const currentSmoothed = smoothedAtTime(feeds, hourlyRate, now);
+  const deficitMl = dailyTargetMl - currentSmoothed;
+
+  // At or above target, or deficit too small to justify even the smallest bottle (< 15 ml).
+  // Recommending 30 ml water (35 ml milk) for a 3 ml deficit makes no sense.
+  const MIN_DEFICIT_ML = 15;
+  if (deficitMl <= 0 || deficitMl < MIN_DEFICIT_ML) {
+    return { waterMl: 0, milkMl: 0, status: "overfed", deficitMl };
+  }
+
+  // Largest practical bottle is 150 ml water / 170 ml formula
+  const MAX_WATER = 150, MAX_FORMULA = 170;
+
+  // Deficit exceeds the largest practical bottle — cap
+  if (deficitMl > MAX_FORMULA) {
+    return { waterMl: MAX_WATER, milkMl: MAX_FORMULA, status: "capped", deficitMl };
+  }
+
+  // Snap to the FORMULA_TABLE entry whose formula value is closest to the deficit
+  const candidates = FORMULA_TABLE.filter((e) => e.water <= MAX_WATER);
+  const closest = candidates.reduce((best, entry) =>
+    Math.abs(entry.formula - deficitMl) < Math.abs(best.formula - deficitMl) ? entry : best
+  );
+  return { waterMl: closest.water, milkMl: closest.formula, status: "optimal", deficitMl };
 }
 
 export function avgIntervalHours(feeds: Feed[]): number | null {

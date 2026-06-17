@@ -15,6 +15,7 @@ export interface Settings {
   timeFormat: '24h' | '12h';
   maxCorrectionPct: number;           // default 25
   useTargetAwarePredictor: boolean;   // default true — Predictor 3 (T*). false = Predictor 2 (Formula S)
+  nextBottleWaterMl: number;          // bottle size (water ml) assumed for next T* calculation
 }
 
 export interface NextFeedResult {

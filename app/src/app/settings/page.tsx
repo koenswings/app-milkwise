@@ -18,6 +18,7 @@ export default function SettingsPage() {
     displayBottleVolumeWater: 90,
     maxCorrectionPct: 25,
     useTargetAwarePredictor: true,
+    nextBottleWaterMl: 90,
   });
   const [saved, setSaved] = useState(false);
   // Local string values so inputs don't snap back while typing (e.g. clearing "90" to type "120")

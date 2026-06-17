@@ -19,6 +19,7 @@ const DEFAULT_SETTINGS: Settings = {
   timeFormat: '24h' as const,
   maxCorrectionPct: 25,
   useTargetAwarePredictor: true,
+  nextBottleWaterMl: 90,
 };
 
 function ensureDir() {

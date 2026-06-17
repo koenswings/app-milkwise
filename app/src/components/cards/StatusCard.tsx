@@ -13,6 +13,8 @@ interface Props {
   strictPct: number;
   smoothedMl: number;
   smoothedPct: number;
+  liveSmoothedMl: number;   // smoothed ml at live clock
+  liveSmoothedPct: number;  // smoothed % at live clock
   dailyTargetMl: number;
   standardBottleVolume: number;
   yellowThresholdPct: number;
@@ -88,12 +90,32 @@ function Panel({ label, ml, pct, milkPerBottle, standardBottleVolume, y, r, onEx
 }
 
 // ── Panel with gauge replacing bottle count ───────────────────────────────────────────
-function PanelWithGauge({ label, ml, pct, milkPerBottle, dailyTargetMl, y, r, onExplain, feeds24h }:
-  { label: string; ml: number; pct: number; milkPerBottle: number; dailyTargetMl: number; y: number; r: number; onExplain: () => void; feeds24h: Feed[] }) {
+function PanelWithGauge({ label, ml, pct, livePct: _livePct, milkPerBottle, dailyTargetMl, y, r, onExplain, feeds24h }:
+  { label: string; ml: number; pct: number; livePct: number; milkPerBottle: number; dailyTargetMl: number; y: number; r: number; onExplain: () => void; feeds24h: Feed[] }) {
 
-  const diff = pct - 100;
-  const fillHeight = Math.min(Math.max((pct - 60) / 80 * 100, 0), 100);
-  const fillColor = Math.abs(diff) <= y ? '#4ade80' : diff > 0 ? '#f97316' : '#60a5fa';
+  // Shared single-gauge renderer
+  function SingleGauge({ gPct, live }: { gPct: number; live: boolean }) {
+    const gDiff = gPct - 100;
+    const fill = Math.min(Math.max((gPct - 60) / 80 * 100, 0), 100);
+    const color = Math.abs(gDiff) <= y ? '#4ade80' : gDiff > 0 ? '#f97316' : '#60a5fa';
+    const deltaml = Math.abs(Math.round(gPct / 100 * dailyTargetMl - dailyTargetMl));
+    return (
+      <div className="flex flex-col items-center">
+        <span className="text-xs text-orange-400 mb-0.5">↑</span>
+        <div className="relative w-7 rounded-t-lg border-2 border-slate-500 overflow-hidden" style={{ height: 72 }}>
+          <div
+            className={live ? 'absolute bottom-0 left-0 right-0 transition-all duration-1000' : 'absolute bottom-0 left-0 right-0'}
+            style={{ height: `${fill}%`, backgroundColor: color }}
+          />
+          <div className="absolute left-0 right-0 h-0.5 bg-white/60" style={{ bottom: '50%' }} />
+        </div>
+        <span className="text-xs text-blue-400 mt-0.5">↓</span>
+        <div className="text-xs font-bold tabular-nums mt-0.5 text-center" style={{ color }}>
+          {Math.abs(gDiff) < 1 ? '–' : `${gDiff > 0 ? '+' : '−'}${deltaml}ml`}
+        </div>
+      </div>
+    );
+  }
 
   const feedEmojis = [...feeds24h]
     .sort((a, b) => b.volume - a.volume)
@@ -107,7 +129,7 @@ function PanelWithGauge({ label, ml, pct, milkPerBottle, dailyTargetMl, y, r, on
       </div>
 
       <div className="flex items-start">
-        {/* Left: ml + pictograms — 62% width */}
+        {/* Left: ml + pictograms — 62% */}
         <div style={{ width: '62%' }}>
           <div className={`text-3xl font-bold leading-none tabular-nums mb-1 ${colorClass(pct, y, r)}`}>{Math.round(ml)}<span className="text-base font-normal ml-0.5">ml</span></div>
           <div className={`text-sm mb-2 ${colorClass(pct, y, r)}`}>{Math.round(pct)}% · {statusText(pct, y, r)}</div>
@@ -120,18 +142,118 @@ function PanelWithGauge({ label, ml, pct, milkPerBottle, dailyTargetMl, y, r, on
             ))}
           </div>
         </div>
+        {/* Right: single gauge — 38% */}
+        <div className="flex justify-center" style={{ width: '38%' }}>
+          <SingleGauge gPct={pct} live={false} />
+        </div>
+      </div>
+    </div>
+  );
+}
 
-        {/* Right: vertical gauge — fills remaining 38%, centred */}
-        <div className="flex flex-col items-center" style={{ width: '38%' }}>
-          <span className="text-xs text-orange-400 mb-0.5">↑</span>
-          <div className="relative w-7 rounded-t-lg border-2 border-slate-500 overflow-hidden" style={{ height: 72 }}>
-            <div className="absolute bottom-0 left-0 right-0 transition-all" style={{ height: `${fillHeight}%`, backgroundColor: fillColor }} />
-            <div className="absolute left-0 right-0 h-0.5 bg-white/60" style={{ bottom: '50%' }} />
+// ── Dual-gauge panel (both at-feed and now side by side) ────────────────────────────
+function PanelDualGauge({ ml, pct, livePct, milkPerBottle, dailyTargetMl, y, r, onExplain, feeds24h }:
+  { ml: number; pct: number; livePct: number; milkPerBottle: number; dailyTargetMl: number; y: number; r: number; onExplain: () => void; feeds24h: Feed[] }) {
+
+  function Gauge({ gPct, gLabel, live }: { gPct: number; gLabel: string; live: boolean }) {
+    const gDiff = gPct - 100;
+    const fill = Math.min(Math.max((gPct - 60) / 80 * 100, 0), 100);
+    const color = Math.abs(gDiff) <= y ? '#4ade80' : gDiff > 0 ? '#f97316' : '#60a5fa';
+    const deltaml = Math.abs(Math.round(gPct / 100 * dailyTargetMl - dailyTargetMl));
+    return (
+      <div className="flex flex-col items-center">
+        <span className="text-xs text-orange-400 mb-0.5">↑</span>
+        <div className="relative rounded-t-lg border-2 border-slate-500 overflow-hidden" style={{ width: 28, height: 72 }}>
+          <div
+            className={live ? 'absolute bottom-0 left-0 right-0 transition-all duration-1000' : 'absolute bottom-0 left-0 right-0'}
+            style={{ height: `${fill}%`, backgroundColor: color }}
+          />
+          <div className="absolute left-0 right-0 h-0.5 bg-white/60" style={{ bottom: '50%' }} />
+        </div>
+        <span className="text-xs text-blue-400 mt-0.5">↓</span>
+        <div className="text-xs font-bold tabular-nums mt-0.5 text-center" style={{ color }}>
+          {Math.abs(gDiff) < 1 ? '–' : `${gDiff > 0 ? '+' : '−'}${deltaml}ml`}
+        </div>
+        <div className="text-xs text-slate-500 mt-0.5">{gLabel}</div>
+      </div>
+    );
+  }
+
+  const feedEmojis = [...feeds24h]
+    .sort((a, b) => b.volume - a.volume)
+    .map(f => ({ vol: f.volume, size: waterToMilk(f.volume) / milkPerBottle }));
+
+  return (
+    <div className={`rounded-xl border p-3 ${bgBorder(pct, y, r)}`}>
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-xs text-slate-400 uppercase tracking-wide">Status — at feed vs now</span>
+        <button onClick={onExplain} className="w-5 h-5 rounded-full bg-slate-600 hover:bg-slate-500 text-slate-300 text-xs font-bold flex items-center justify-center leading-none">?</button>
+      </div>
+      <div className="flex items-start">
+        <div style={{ width: '52%' }}>
+          <div className={`text-3xl font-bold leading-none tabular-nums mb-1 ${colorClass(pct, y, r)}`}>{Math.round(ml)}<span className="text-base font-normal ml-0.5">ml</span></div>
+          <div className={`text-sm mb-2 ${colorClass(pct, y, r)}`}>{Math.round(pct)}% · {statusText(pct, y, r)}</div>
+          <div className="flex flex-wrap items-end gap-1">
+            {feedEmojis.map((f, i) => (
+              <div key={i} className="flex flex-col items-center justify-end">
+                <span className="leading-none block" style={{ fontSize: `${Math.max(0.8, Math.min(1.5, f.size + 0.3))}rem`, opacity: 0.7 + f.size * 0.3 }}>🍼</span>
+                <span className="text-xs text-slate-500 tabular-nums leading-none mt-0.5">{f.vol}</span>
+              </div>
+            ))}
           </div>
-          <span className="text-xs text-blue-400 mt-0.5">↓</span>
-          <div className="text-xs font-bold tabular-nums mt-0.5 text-center" style={{ color: fillColor }}>
-            {Math.abs(diff) < 1 ? '–'
-              : `${diff > 0 ? '+' : '−'}${Math.abs(Math.round(ml - dailyTargetMl))}ml`}
+        </div>
+        <div className="flex gap-3 justify-center" style={{ width: '48%' }}>
+          <Gauge gPct={pct} gLabel="at feed" live={false} />
+          <Gauge gPct={livePct} gLabel="now" live={true} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Live panel — all values at now ────────────────────────────────────────────────
+function PanelWithGaugeLive({ liveMl, livePct, milkPerBottle, dailyTargetMl, y, r, onExplain, feeds24h }:
+  { liveMl: number; livePct: number; milkPerBottle: number; dailyTargetMl: number; y: number; r: number; onExplain: () => void; feeds24h: Feed[] }) {
+
+  const liveDiff = livePct - 100;
+  const fill = Math.min(Math.max((livePct - 60) / 80 * 100, 0), 100);
+  const fillColor = Math.abs(liveDiff) <= y ? '#4ade80' : liveDiff > 0 ? '#f97316' : '#60a5fa';
+  const deltaml = Math.abs(Math.round(livePct / 100 * dailyTargetMl - dailyTargetMl));
+
+  const feedEmojis = [...feeds24h]
+    .sort((a, b) => b.volume - a.volume)
+    .map(f => ({ vol: f.volume, size: waterToMilk(f.volume) / milkPerBottle }));
+
+  return (
+    <div className={`rounded-xl border p-3 ${bgBorder(livePct, y, r)}`}>
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-xs text-slate-400 uppercase tracking-wide">Status now</span>
+        <button onClick={onExplain} className="w-5 h-5 rounded-full bg-slate-600 hover:bg-slate-500 text-slate-300 text-xs font-bold flex items-center justify-center leading-none">?</button>
+      </div>
+      <div className="flex items-start">
+        <div style={{ width: '62%' }}>
+          <div className={`text-3xl font-bold leading-none tabular-nums mb-1 ${colorClass(livePct, y, r)}`}>{Math.round(liveMl)}<span className="text-base font-normal ml-0.5">ml</span></div>
+          <div className={`text-sm mb-2 ${colorClass(livePct, y, r)}`}>{Math.round(livePct)}% · {statusText(livePct, y, r)}</div>
+          <div className="flex flex-wrap items-end gap-1">
+            {feedEmojis.map((f, i) => (
+              <div key={i} className="flex flex-col items-center justify-end">
+                <span className="leading-none block" style={{ fontSize: `${Math.max(0.8, Math.min(1.5, f.size + 0.3))}rem`, opacity: 0.7 + f.size * 0.3 }}>🍼</span>
+                <span className="text-xs text-slate-500 tabular-nums leading-none mt-0.5">{f.vol}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="flex justify-center" style={{ width: '38%' }}>
+          <div className="flex flex-col items-center">
+            <span className="text-xs text-orange-400 mb-0.5">↑</span>
+            <div className="relative w-7 rounded-t-lg border-2 border-slate-500 overflow-hidden" style={{ height: 72 }}>
+              <div className="absolute bottom-0 left-0 right-0 transition-all duration-1000" style={{ height: `${fill}%`, backgroundColor: fillColor }} />
+              <div className="absolute left-0 right-0 h-0.5 bg-white/60" style={{ bottom: '50%' }} />
+            </div>
+            <span className="text-xs text-blue-400 mt-0.5">↓</span>
+            <div className="text-xs font-bold tabular-nums mt-0.5 text-center" style={{ color: fillColor }}>
+              {Math.abs(liveDiff) < 1 ? '–' : `${liveDiff > 0 ? '+' : '−'}${deltaml}ml`}
+            </div>
           </div>
         </div>
       </div>
@@ -381,7 +503,14 @@ export default function StatusCard(props: Props) {
     <SwipeableCard
       className="mb-2"
       views={[
-        <PanelWithGauge key="smoothed-gauge" label="STATUS LAST 24H" ml={smoothedMl} pct={smoothedPct}
+        <PanelWithGauge key="smoothed-gauge" label="Status at last feed" ml={smoothedMl} pct={smoothedPct}
+          livePct={props.liveSmoothedPct}
+          milkPerBottle={milkPerBottle} dailyTargetMl={props.dailyTargetMl} y={y} r={r}
+          onExplain={props.onSmoothedExplain} feeds24h={feeds24h} />,
+        <PanelWithGaugeLive key="live-gauge" liveMl={props.liveSmoothedMl} livePct={props.liveSmoothedPct}
+          milkPerBottle={milkPerBottle} dailyTargetMl={props.dailyTargetMl} y={y} r={r}
+          onExplain={props.onSmoothedExplain} feeds24h={feeds24h} />,
+        <PanelDualGauge key="dual-gauge" ml={smoothedMl} pct={smoothedPct} livePct={props.liveSmoothedPct}
           milkPerBottle={milkPerBottle} dailyTargetMl={props.dailyTargetMl} y={y} r={r}
           onExplain={props.onSmoothedExplain} feeds24h={feeds24h} />,
         <FeedTrendView key="trend" feeds={props.feeds} weights={props.weights}
