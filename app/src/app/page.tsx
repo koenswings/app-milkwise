@@ -135,10 +135,13 @@ export default function Dashboard() {
 
   const nextFeedResult = nextFeedTime(feeds, derived.hourlyRate, smoothedMl, derived.dailyTargetMl, { ...settings, nextBottleWaterMl });
   const nextFeed = nextFeedResult?.timestamp ?? null;
-  // Standard next = lastFeed + decay of last bottle
-  // Standard next uses the user-selected standard bottle size (not last feed volume)
+  // Standard next for the Standard pill — uses standardBottleWaterMl
   const standardBottleMilkMl = waterToMilk(standardBottleWaterMl);
   const standardNext = lastFeed ? lastFeed.timestamp + (standardBottleMilkMl / derived.hourlyRate) * 3_600_000 : null;
+  // P3's own internal standard — uses nextBottleWaterMl (same baseline P3 optimises against)
+  // Used for the "Xm earlier/later" delta label so it matches the explainer's correction value.
+  const p3StandardBottleMilkMl = waterToMilk(nextBottleWaterMl);
+  const p3StandardNext = lastFeed ? lastFeed.timestamp + (p3StandardBottleMilkMl / derived.hourlyRate) * 3_600_000 : null;
 
   return (
     <div className="max-w-lg mx-auto px-4 pt-6 pb-24">
@@ -352,8 +355,10 @@ export default function Dashboard() {
                 </Link>
               </div>
               <DigClock ts={nextFeed} sub={nextFeed ? formatRelative(nextFeed, now) : undefined} />
-              {nextFeed && standardNext && (() => {
-                const d = Math.round((nextFeed - standardNext) / 60_000);
+              {nextFeed && p3StandardNext && (() => {
+                // Compare P3 result against P3's own internal standard (same nextBottleWaterMl baseline)
+                // so this delta matches what the explainer shows as "time correction".
+                const d = Math.round((nextFeed - p3StandardNext) / 60_000);
                 if (d === 0) return <div className="text-xs text-slate-500 mt-0.5">same as standard</div>;
                 return <div className={`text-xs mt-0.5 font-medium ${d > 0 ? 'text-yellow-400' : 'text-blue-400'}`}>{d > 0 ? `${d}m later` : `${Math.abs(d)}m earlier`} than standard</div>;
               })()}
@@ -362,21 +367,13 @@ export default function Dashboard() {
                 onClick={() => setShowNextBottlePicker(true)}
                 className="mt-1.5 w-full text-center bg-slate-700 hover:bg-slate-600 rounded-full px-2 py-0.5 text-xs text-slate-300 cursor-pointer transition-colors"
               >⬡ {nextBottleWaterMl} ml</button>
-              {/* §3.6 Best size now hint */}
+              {/* §3.6 Best size now hint — only show when it's actionable (not overfed at frozen snapshot) */}
               {feeds.length > 0 && (() => {
                 const best = bestBottleSizeNow(feeds, derived.hourlyRate, derived.dailyTargetMl, now);
                 const go = () => router.push(`/log?recommend=${best.waterMl}&recStatus=${best.status}`);
-                if (best.status === "overfed") {
-                  // Over target — don't recommend feeding, point to T* instead
-                  if (nextFeed) {
-                    const d = new Date(nextFeed);
-                    let h = d.getHours(), m = d.getMinutes();
-                    if (settings.timeFormat === '12h') { h = h % 12 || 12; }
-                    const ts = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
-                    return <div className="text-xs text-amber-400 mt-1">⚠️ Over target — wait until {ts}</div>;
-                  }
-                  return <div className="text-xs text-amber-400 mt-1">⚠️ Over target — don&apos;t feed yet</div>;
-                }
+                // "Overfed" in live view right after a feed is expected and matches the P3 clock.
+                // Don't show a conflicting hint — the Adjusted clock already tells the parent when to feed.
+                if (best.status === "overfed") return null;
                 if (best.status === "capped") {
                   return <div onClick={go} className="text-xs text-slate-400 cursor-pointer underline mt-1">Feed now → {best.waterMl} ml water ({Math.round(best.milkMl)} ml milk, large deficit)</div>;
                 }
