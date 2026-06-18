@@ -121,17 +121,21 @@ export default function NextFeedInfoPage() {
       const windowEndGraphIdx = findIdx(windowEndTs);
       if (windowEndGraphIdx >= 0 && windowEndGraphIdx < windowPoints.length) windowPoints[windowEndGraphIdx].label = 'Window end';
 
-      // Compute credit rows for all feeds — frozen at lastFeed.timestamp
-      const creditRows = [...feeds]
+      // Credit rows: all feeds with any credit, PLUS up to 3 extra bottles
+      // past the credit cutoff so the parent can see where the window ends.
+      const fullDecayHours = 24 + (waterToMilk(90) / derived.hourlyRate); // ~26.5h
+      const showCutoffHours = fullDecayHours + 2 * (waterToMilk(90) / derived.hourlyRate);
+      const allRows = [...feeds]
         .map(f => {
           const ageHours = (lastFeed.timestamp - f.timestamp) / 3_600_000;
           const milkMl = waterToMilk(f.volume);
           const creditMl = bottleCredit(ageHours, milkMl, derived.hourlyRate);
           return { ts: f.timestamp, waterMl: f.volume, milkMl, ageHours, creditMl };
         })
-        .filter(r => r.creditMl > 0)
+        .filter(r => r.ageHours >= 0 && r.ageHours <= showCutoffHours)
         .sort((a, b) => b.ts - a.ts);
-      const creditTotal = creditRows.reduce((s, r) => s + r.creditMl, 0);
+      const creditRows = allRows;
+      const creditTotal = allRows.reduce((s, r) => s + r.creditMl, 0);
 
       setLive({
         smoothedAtLastFeedMl: smoothedTotal,
@@ -466,20 +470,23 @@ adjusted   = standard + correction`}</div>
                 </thead>
                 <tbody>
                   {live.creditRows.map((r, i) => {
-                    const full = r.creditMl >= r.milkMl - 0.5;
-                    const past24 = r.ageHours >= 24;
+                    const zero = r.creditMl <= 0;
+                    const full = !zero && r.ageHours < 24;
+                    const partial = !zero && !full;
                     const h = Math.floor(r.ageHours);
                     const m = Math.round((r.ageHours - h) * 60);
                     return (
-                      <tr key={i} className="border-t border-slate-700/50">
+                      <tr key={i} className={`border-t border-slate-700/50 ${zero ? 'opacity-40' : ''}`}>
                         <td className="px-3 py-1.5 text-slate-300">{fmtTime(r.ts, live.timeFormat)}</td>
                         <td className="px-3 py-1.5 text-right text-slate-400">{r.waterMl} ml</td>
                         <td className="px-3 py-1.5 text-right text-slate-300">{r.milkMl.toFixed(0)} ml</td>
-                        <td className={`px-3 py-1.5 text-right ${past24 ? 'text-amber-400' : 'text-slate-300'}`}>
+                        <td className={`px-3 py-1.5 text-right ${r.ageHours >= 24 ? 'text-amber-400' : 'text-slate-300'}`}>
                           {h}h {m}m
                         </td>
-                        <td className={`px-3 py-1.5 text-right font-semibold ${full ? 'text-green-400' : 'text-amber-400'}`}>
-                          {r.creditMl.toFixed(0)} ml
+                        <td className={`px-3 py-1.5 text-right font-semibold ${
+                          full ? 'text-green-400' : partial ? 'text-amber-400' : 'text-slate-600'
+                        }`}>
+                          {zero ? '0 ml — exhausted' : `${r.creditMl.toFixed(0)} ml`}
                         </td>
                       </tr>
                     );
