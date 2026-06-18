@@ -7,6 +7,8 @@ import { Settings, Feed } from "@/types";
 import BottomNav from "@/components/BottomNav";
 import { useRouter } from "next/navigation";
 
+const APP_VERSION = "1.0.71";
+
 export default function SettingsPage() {
   const [settings, setSettings] = useState<Settings>({
     weightKg: 6.27,
@@ -342,6 +344,10 @@ export default function SettingsPage() {
         >
           Import Feeds
         </button>
+      </div>
+
+      <div className="mt-8 text-center text-xs text-slate-600">
+        MilkWise {APP_VERSION}
       </div>
 
       <BottomNav />
