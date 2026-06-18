@@ -37,6 +37,7 @@ export default function SwipeableCard({ views, className = "" }: Props) {
   return (
     <div
       className={`overflow-hidden select-none cursor-grab active:cursor-grabbing ${className}`}
+      style={{ touchAction: 'pan-y' }}
       onTouchStart={onTouchStart}
       onTouchEnd={onTouchEnd}
       onMouseDown={onMouseDown}

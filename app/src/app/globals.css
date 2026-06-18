@@ -8,6 +8,8 @@
 body {
   background: var(--background);
   color: var(--foreground);
+  /* Allow iOS Safari pull-to-refresh; SwipeableCard uses touch-action:pan-y for horizontal swipes */
+  overscroll-behavior-y: auto;
 }
 
 /* Scrollbar */
