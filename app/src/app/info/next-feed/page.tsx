@@ -121,21 +121,26 @@ export default function NextFeedInfoPage() {
       const windowEndGraphIdx = findIdx(windowEndTs);
       if (windowEndGraphIdx >= 0 && windowEndGraphIdx < windowPoints.length) windowPoints[windowEndGraphIdx].label = 'Window end';
 
-      // Credit rows: all feeds with any credit, PLUS up to 3 extra bottles
-      // past the credit cutoff so the parent can see where the window ends.
-      const fullDecayHours = 24 + (waterToMilk(90) / derived.hourlyRate); // ~26.5h
-      const showCutoffHours = fullDecayHours + 2 * (waterToMilk(90) / derived.hourlyRate);
-      const allRows = [...feeds]
+      // Map ALL feeds (age >= 0) with their credit — no pre-filter.
+      // A bottle fully decays at age = 24 + milkMl/hourlyRate, which varies per bottle size.
+      // We keep: all bottles with credit > 0, plus the 3 oldest that have just hit zero,
+      // so the table shows the tail of the decay window clearly.
+      const mappedRows = [...feeds]
         .map(f => {
           const ageHours = (lastFeed.timestamp - f.timestamp) / 3_600_000;
+          if (ageHours < 0) return null;
           const milkMl = waterToMilk(f.volume);
           const creditMl = bottleCredit(ageHours, milkMl, derived.hourlyRate);
           return { ts: f.timestamp, waterMl: f.volume, milkMl, ageHours, creditMl };
         })
-        .filter(r => r.ageHours >= 0 && r.ageHours <= showCutoffHours)
-        .sort((a, b) => b.ts - a.ts);
-      const creditRows = allRows;
-      const creditTotal = allRows.reduce((s, r) => s + r.creditMl, 0);
+        .filter((r): r is NonNullable<typeof r> => r !== null)
+        .sort((a, b) => b.ts - a.ts); // most recent first
+
+      // Split: credited rows + the first 3 zero-credit rows after the window
+      const creditedRows = mappedRows.filter(r => r.creditMl > 0);
+      const exhaustedRows = mappedRows.filter(r => r.creditMl <= 0).slice(0, 3);
+      const creditRows = [...creditedRows, ...exhaustedRows].sort((a, b) => b.ts - a.ts);
+      const creditTotal = creditedRows.reduce((s, r) => s + r.creditMl, 0);
 
       setLive({
         smoothedAtLastFeedMl: smoothedTotal,
