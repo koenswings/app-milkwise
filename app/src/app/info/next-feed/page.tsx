@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { getFeeds, getSettings } from "@/lib/store";
-import { deriveSettings, smoothedEffective, smoothedAtTime, nextFeedTime, waterToMilk } from "@/lib/calculations";
+import { deriveSettings, smoothedEffective, smoothedAtTime, nextFeedTime, waterToMilk, bottleCredit } from "@/lib/calculations";
 import { formatDateTime } from "@/lib/formatTime";
 
 function fmtRel(ms: number, now: number): string {
@@ -56,6 +56,9 @@ export default function NextFeedInfoPage() {
     maxCorrectionMin: number;
     clampedMin: number;
     rawCorrectionMin: number;
+    creditRows: { ts: number; waterMl: number; milkMl: number; ageHours: number; creditMl: number }[];
+    creditTotal: number;
+    hourlyRate: number;
   } | null>(null);
   const [now] = useState(Date.now());
 
@@ -118,6 +121,18 @@ export default function NextFeedInfoPage() {
       const windowEndGraphIdx = findIdx(windowEndTs);
       if (windowEndGraphIdx >= 0 && windowEndGraphIdx < windowPoints.length) windowPoints[windowEndGraphIdx].label = 'Window end';
 
+      // Compute credit rows for all feeds — frozen at lastFeed.timestamp
+      const creditRows = [...feeds]
+        .map(f => {
+          const ageHours = (lastFeed.timestamp - f.timestamp) / 3_600_000;
+          const milkMl = waterToMilk(f.volume);
+          const creditMl = bottleCredit(ageHours, milkMl, derived.hourlyRate);
+          return { ts: f.timestamp, waterMl: f.volume, milkMl, ageHours, creditMl };
+        })
+        .filter(r => r.creditMl > 0)
+        .sort((a, b) => b.ts - a.ts);
+      const creditTotal = creditRows.reduce((s, r) => s + r.creditMl, 0);
+
       setLive({
         smoothedAtLastFeedMl: smoothedTotal,
         dailyTargetMl: derived.dailyTargetMl,
@@ -140,6 +155,9 @@ export default function NextFeedInfoPage() {
         maxCorrectionMin: Math.round(p2MaxCorrectionMs / 60_000),
         clampedMin: Math.round(clampedMs / 60_000),
         rawCorrectionMin: Math.round(rawCorrectionMs / 60_000),
+        creditRows,
+        creditTotal,
+        hourlyRate: derived.hourlyRate,
       });
     })();
   }, []);
@@ -424,7 +442,66 @@ adjusted   = standard + correction`}</div>
 
       {!live && <p className="text-slate-400">Loading…</p>}
 
-      <div className="bg-slate-800 rounded-xl p-4 mt-2">
+      {/* Feed credit table */}
+      {live && (
+        <div className="mt-4">
+          <h3 className="text-slate-100 font-semibold mb-1 text-sm">Bottles in the smoothed calculation</h3>
+          <p className="text-xs text-slate-500 mb-2">
+            Credits frozen at the last feed ({fmtTime(live.lastFeedTs, live.timeFormat)}).
+            Hourly rate: {live.hourlyRate.toFixed(1)} ml/h.
+          </p>
+          {live.creditRows.length === 0 ? (
+            <p className="text-sm text-slate-500">No bottles with remaining credit.</p>
+          ) : (
+            <div className="bg-slate-800 rounded-xl overflow-x-auto">
+              <table className="w-full text-xs font-mono">
+                <thead>
+                  <tr className="text-slate-500 border-b border-slate-700">
+                    <th className="text-left font-normal px-3 py-2">Time</th>
+                    <th className="text-right font-normal px-3 py-2">Water</th>
+                    <th className="text-right font-normal px-3 py-2">Formula</th>
+                    <th className="text-right font-normal px-3 py-2">Age</th>
+                    <th className="text-right font-normal px-3 py-2">Credit</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {live.creditRows.map((r, i) => {
+                    const full = r.creditMl >= r.milkMl - 0.5;
+                    const past24 = r.ageHours >= 24;
+                    const h = Math.floor(r.ageHours);
+                    const m = Math.round((r.ageHours - h) * 60);
+                    return (
+                      <tr key={i} className="border-t border-slate-700/50">
+                        <td className="px-3 py-1.5 text-slate-300">{fmtTime(r.ts, live.timeFormat)}</td>
+                        <td className="px-3 py-1.5 text-right text-slate-400">{r.waterMl} ml</td>
+                        <td className="px-3 py-1.5 text-right text-slate-300">{r.milkMl.toFixed(0)} ml</td>
+                        <td className={`px-3 py-1.5 text-right ${past24 ? 'text-amber-400' : 'text-slate-300'}`}>
+                          {h}h {m}m
+                        </td>
+                        <td className={`px-3 py-1.5 text-right font-semibold ${full ? 'text-green-400' : 'text-amber-400'}`}>
+                          {r.creditMl.toFixed(0)} ml
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+                <tfoot>
+                  <tr className="border-t-2 border-slate-600">
+                    <td colSpan={4} className="px-3 py-2 text-slate-300 font-semibold">Total smoothed</td>
+                    <td className="px-3 py-2 text-right text-white font-bold">{live.creditTotal.toFixed(0)} ml</td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          )}
+          <p className="text-xs text-slate-600 mt-2">
+            <span className="text-green-400">Green</span> = full credit (age ≤ 24h)  
+            <span className="text-amber-400">Amber</span> = partial credit (age &gt; 24h, decaying at {live.hourlyRate.toFixed(1)} ml/h)
+          </p>
+        </div>
+      )}
+
+      <div className="bg-slate-800 rounded-xl p-4 mt-4">
         <p className="text-slate-500 text-xs">
           You can switch between Predictor 2 and Predictor 3 in Settings.
           Predictor 3 (default) guarantees zero surplus after the next feed if the cap allows it.
