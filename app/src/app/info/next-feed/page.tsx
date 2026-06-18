@@ -38,6 +38,7 @@ export default function NextFeedInfoPage() {
     nextBottleWaterMl: number;
     targetBeforeMl: number;
     // Window
+    graphStartTs: number;
     lastFeedTs: number;
     standardTs: number;
     tStarTs: number;
@@ -91,25 +92,31 @@ export default function NextFeedInfoPage() {
       const capped = result?.capped ?? false;
       const p3DeltaMin = Math.round((adjustedTs - p3StandardTs) / 60_000);
 
-      // Build graph points: 40 samples from lastFeed to windowEnd
-      const spanMs = windowEndTs - lastFeed.timestamp;
-      const steps = 40;
+      // Graph spans 3h before lastFeed → windowEnd, sampled every minute.
+      // Starting before lastFeed ensures older bottles decaying through 24h are visible.
+      const graphStartTs = lastFeed.timestamp - 3 * 3_600_000;
+      const graphEndTs = windowEndTs;
+      const graphStepMs = 60_000; // 1-minute resolution
+      const graphSteps = Math.ceil((graphEndTs - graphStartTs) / graphStepMs);
       const windowPoints: WindowPoint[] = [];
-      for (let i = 0; i <= steps; i++) {
-        const ts = lastFeed.timestamp + (spanMs * i) / steps;
+      for (let i = 0; i <= graphSteps; i++) {
+        const ts = graphStartTs + i * graphStepMs;
         const smoothedMl = smoothedAtTime(feeds, derived.hourlyRate, ts);
         windowPoints.push({ ts, smoothedMl });
       }
-      // Label key points
-      windowPoints[0].label = 'Last feed';
-      const standardIdx = Math.round(((p3StandardTs - lastFeed.timestamp) / spanMs) * steps);
-      if (standardIdx >= 0 && standardIdx <= steps) windowPoints[standardIdx].label = 'Standard';
-      const tStarIdx = Math.round(((adjustedTs - lastFeed.timestamp) / spanMs) * steps);
-      if (tStarIdx >= 0 && tStarIdx <= steps) {
+      // Label key timestamps
+      const findIdx = (targetTs: number) => Math.round((targetTs - graphStartTs) / graphStepMs);
+      const lastFeedGraphIdx = findIdx(lastFeed.timestamp);
+      if (lastFeedGraphIdx >= 0 && lastFeedGraphIdx < windowPoints.length) windowPoints[lastFeedGraphIdx].label = 'Last feed';
+      const standardIdx2 = findIdx(p3StandardTs);
+      if (standardIdx2 >= 0 && standardIdx2 < windowPoints.length) windowPoints[standardIdx2].label = 'Standard';
+      const tStarIdx = findIdx(adjustedTs);
+      if (tStarIdx >= 0 && tStarIdx < windowPoints.length) {
         windowPoints[tStarIdx].isTstar = true;
         windowPoints[tStarIdx].label = 'T*';
       }
-      windowPoints[steps].label = 'Window end';
+      const windowEndGraphIdx = findIdx(windowEndTs);
+      if (windowEndGraphIdx >= 0 && windowEndGraphIdx < windowPoints.length) windowPoints[windowEndGraphIdx].label = 'Window end';
 
       setLive({
         smoothedAtLastFeedMl: smoothedTotal,
@@ -118,6 +125,7 @@ export default function NextFeedInfoPage() {
         nextBottleMilkMl,
         nextBottleWaterMl: settings.nextBottleWaterMl ?? 90,
         targetBeforeMl: targetBefore,
+        graphStartTs,
         lastFeedTs: lastFeed.timestamp,
         standardTs: p3StandardTs,
         tStarTs: adjustedTs,
@@ -148,9 +156,9 @@ export default function NextFeedInfoPage() {
     const maxY = Math.max(...allSmoothed) * 1.03;
     const rangeY = maxY - minY || 1;
 
-    const spanMs = live.windowEndTs - live.lastFeedTs;
+    const spanMs = live.windowEndTs - live.graphStartTs;
 
-    const tx = (ts: number) => padL + ((ts - live.lastFeedTs) / spanMs) * gW;
+    const tx = (ts: number) => padL + ((ts - live.graphStartTs) / spanMs) * gW;
     const ty = (ml: number) => padT + (1 - (ml - minY) / rangeY) * gH;
 
     // Smoothed decay path
@@ -162,6 +170,7 @@ export default function NextFeedInfoPage() {
     const targetY = ty(live.targetBeforeMl);
     const tStarX = tx(live.tStarTs);
     const standardX = tx(live.standardTs);
+    const lastFeedX = tx(live.lastFeedTs);
 
     return (
       <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ height: H }}>
@@ -180,6 +189,10 @@ export default function NextFeedInfoPage() {
         {/* Target-before-feed line */}
         <line x1={padL} y1={targetY} x2={W - padR} y2={targetY} stroke="#f59e0b" strokeWidth="1" strokeDasharray="4 2" />
         <text x={W - padR + 2} y={targetY + 3.5} fontSize="7" fill="#f59e0b">target</text>
+
+        {/* Last feed vertical */}
+        <line x1={lastFeedX} y1={padT} x2={lastFeedX} y2={padT + gH} stroke="#22d3ee" strokeWidth="1" strokeDasharray="2 2" opacity="0.5" />
+        <text x={lastFeedX} y={padT + gH + 10} textAnchor="middle" fontSize="7" fill="#22d3ee">last</text>
 
         {/* Standard next time vertical */}
         <line x1={standardX} y1={padT} x2={standardX} y2={padT + gH} stroke="#475569" strokeWidth="1" strokeDasharray="3 2" />
@@ -213,7 +226,7 @@ export default function NextFeedInfoPage() {
         {/* Axis */}
         <line x1={padL} y1={padT} x2={padL} y2={padT + gH} stroke="#475569" strokeWidth="1" />
         <line x1={padL} y1={padT + gH} x2={W - padR} y2={padT + gH} stroke="#475569" strokeWidth="1" />
-        <text x={padL} y={padT + gH + 10} textAnchor="middle" fontSize="7" fill="#64748b">{fmtTime(live.lastFeedTs, live.timeFormat)}</text>
+        <text x={padL} y={padT + gH + 10} textAnchor="middle" fontSize="7" fill="#64748b">{fmtTime(live.graphStartTs, live.timeFormat)}</text>
         {live.capped && (
           <text x={W - padR} y={padT + gH + 10} textAnchor="end" fontSize="7" fill="#f97316">cap</text>
         )}
