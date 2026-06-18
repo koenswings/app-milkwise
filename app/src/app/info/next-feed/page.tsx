@@ -264,39 +264,79 @@ export default function NextFeedInfoPage() {
               </div>
 
               {/* Narrative explanation */}
-              <div className="bg-slate-800/50 rounded-xl p-4 space-y-2 text-sm">
-                {/* Opening state */}
+              <div className="bg-slate-800/50 rounded-xl p-4 space-y-3 text-sm">
+                {/* What the graph is showing */}
                 <p>
-                  At the last feed, smoothed intake was{' '}
-                  <strong className="text-slate-200">{Math.round(live.smoothedAtLastFeedMl)} ml</strong>
-                  {live.surplusMl >= 0
-                    ? <> — <span className="text-yellow-400">+{Math.round(live.surplusMl)} ml above target</span>. The curve starts above the target line and descends toward it.</>
-                    : <> — <span className="text-blue-400">{Math.round(live.surplusMl)} ml below target</span>. The curve is already below the target line.</>
-                  }
+                  The graph shows how the smoothed energy level decays after the last feed as older
+                  bottles gradually lose credit. The amber dashed line is the{' '}
+                  <strong className="text-slate-200">search threshold</strong>: the daily target
+                  minus the intended next bottle ({Math.round(live.dailyTargetMl)} − {Math.round(live.nextBottleMilkMl)}{' '}
+                  = <strong className="text-amber-300">{Math.round(live.targetBeforeMl)} ml</strong>).
+                  T* is the moment the curve crosses that line — meaning the smoothed has decayed far
+                  enough that giving the next bottle fills it back up to exactly the daily target.
                 </p>
 
-                {live.surplusMl < 0 ? (
-                  // Underfed at last feed: smoothed already ≤ targetBefore → T* = lastFeed (feed now)
+                {/* Core situation */}
+                <p>
+                  {live.surplusMl >= 0 ? (
+                    <>
+                      At the last feed, the baby was{' '}
+                      <span className="text-yellow-400">
+                        {Math.round(live.surplusMl)} ml ahead of the daily target
+                      </span>{' '}
+                      (smoothed: {Math.round(live.smoothedAtLastFeedMl)} ml, target: {Math.round(live.dailyTargetMl)} ml).
+                      We therefore need to wait for the smoothed energy to decay by almost a full
+                      intended bottle ({Math.round(live.nextBottleMilkMl)} ml) before feeding again —
+                      so that the next bottle brings the baby back to exactly the daily target, not above it.
+                    </>
+                  ) : (
+                    <>
+                      At the last feed, the baby was{' '}
+                      <span className="text-blue-400">
+                        {Math.abs(Math.round(live.surplusMl))} ml below the daily target
+                      </span>{' '}
+                      (smoothed: {Math.round(live.smoothedAtLastFeedMl)} ml, target: {Math.round(live.dailyTargetMl)} ml).
+                      Because the baby is slightly behind, the smoothed needs to decay by a little less than
+                      a full bottle before the threshold is reached — so the next bottle will overshoot slightly
+                      and bring the baby right back up to target.
+                    </>
+                  )}
+                </p>
+
+                {/* Result */}
+                {live.smoothedAtLastFeedMl <= live.targetBeforeMl ? (
                   <p>
-                    Because the smoothed value is <em>already</em> below the target line, P3 says feed as soon
-                    as possible — T* is at the last feed time itself.
-                    {live.p3DeltaMin < 0
-                      ? <> The result is <strong className="text-blue-300">{Math.abs(live.p3DeltaMin)} min earlier</strong> than the standard interval.</>
-                      : <> This lands <strong className="text-slate-300">at the standard interval</strong>.</>}
+                    The smoothed is <em>already</em> at or below the search threshold
+                    ({Math.round(live.targetBeforeMl)} ml) — T* is now. The adjusted feed time
+                    is <strong className="text-blue-300">{fmtTime(live.tStarTs, live.timeFormat)}</strong>.
                   </p>
                 ) : !live.capped ? (
-                  // Found T* within window
                   <p>
-                    The curve crosses the target line at <strong className="text-blue-300">{fmtTime(live.tStarTs, live.timeFormat)}</strong>{' '}
-                    — <strong className="text-blue-300">{Math.abs(live.p3DeltaMin)} min {live.p3DeltaMin < 0 ? 'earlier' : 'later'}</strong> than
-                    the standard interval. That is T*: the earliest moment at which feeding brings the baby exactly back to target.
+                    The curve reaches the threshold at{' '}
+                    <strong className="text-blue-300">{fmtTime(live.tStarTs, live.timeFormat)}</strong>{' '}
+                    —{' '}
+                    {live.p3DeltaMin === 0 ? (
+                      <>exactly at the standard interval for a {live.nextBottleWaterMl} ml bottle.</>
+                    ) : live.p3DeltaMin < 0 ? (
+                      <>
+                        <strong className="text-blue-300">{Math.abs(live.p3DeltaMin)} min earlier</strong>{' '}
+                        than the standard interval, because the baby was slightly behind target and the
+                        threshold was reached a little sooner.
+                      </>
+                    ) : (
+                      <>
+                        <strong className="text-yellow-300">{live.p3DeltaMin} min later</strong>{' '}
+                        than the standard interval, because the baby was ahead of target and needed
+                        more time to decay down to the threshold.
+                      </>
+                    )}
                   </p>
                 ) : (
-                  // Capped: curve never reaches target line within the window
                   <p>
-                    The curve <strong className="text-orange-400">never reaches the target line</strong> within the allowed
-                    window (standard ±{live.p3MaxCorrectionMin} min). The intake is decaying too slowly — the baby is
-                    significantly ahead of target. P3 waits as long as possible and sets T* at the window end:{' '}
+                    The curve <strong className="text-orange-400">does not reach the threshold</strong>{' '}
+                    within the allowed window (standard ±{live.p3MaxCorrectionMin} min). The baby is
+                    well ahead of target — the smoothed is decaying too slowly. P3 waits as long as
+                    the cap allows and sets T* at the window end:{' '}
                     <strong className="text-orange-300">{fmtTime(live.tStarTs, live.timeFormat)}</strong>.
                   </p>
                 )}

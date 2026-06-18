@@ -147,7 +147,7 @@ export default function Dashboard() {
     <div className="max-w-lg mx-auto px-4 pt-6 pb-24">
       <div className="flex items-baseline justify-between mb-1">
         <h1 className="text-2xl font-bold text-slate-100">🍼 MilkWise</h1>
-        <span className="text-xs text-slate-500">v1.0.71</span>
+        <span className="text-xs text-slate-500">v1.0.73</span>
       </div>
       <p className="text-slate-400 text-sm mb-6">
         {settings.weightKg} kg · Target: {Math.round(derived.dailyTargetMl)} ml/day
