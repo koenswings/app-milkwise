@@ -159,7 +159,10 @@ export function drawTrendGraph(
       ctx.fillText(`${v > 0 ? '+' : ''}${v}`, PAD_L - 3, yy + 3);
   }
 
-  // Catmull-Rom curve
+  // Centripetal Catmull-Rom spline (alpha=0.5) — eliminates overshoots with unequal spacing.
+  // Standard Catmull-Rom (alpha=0) overshoots badly when consecutive points are close in time
+  // but far apart in surplus value. Centripetal parameterisation scales the tangent by the
+  // chord length, which prevents the curve from going outside the convex hull of the data.
   const n = pts.length;
   ctx.strokeStyle = '#e2e8f0';
   ctx.lineWidth = 2.5;
@@ -167,11 +170,23 @@ export function drawTrendGraph(
   ctx.beginPath();
   ctx.moveTo(tx(pts[0].t), ty(pts[0].surplus));
   for (let i = 0; i < n - 1; i++) {
-    const p0 = pts[Math.max(0, i-1)], p1 = pts[i], p2 = pts[i+1], p3 = pts[Math.min(n-1, i+2)];
-    const cp1x = tx(p1.t) + (tx(p2.t) - tx(p0.t)) / 6;
-    const cp1y = ty(p1.surplus) + (ty(p2.surplus) - ty(p0.surplus)) / 6;
-    const cp2x = tx(p2.t) - (tx(p3.t) - tx(p1.t)) / 6;
-    const cp2y = ty(p2.surplus) - (ty(p3.surplus) - ty(p1.surplus)) / 6;
+    const p0 = pts[Math.max(0, i - 1)];
+    const p1 = pts[i];
+    const p2 = pts[i + 1];
+    const p3 = pts[Math.min(n - 1, i + 2)];
+    // Chord lengths in screen space (centripetal: alpha=0.5 → sqrt of distance)
+    const d01 = Math.sqrt(Math.hypot(tx(p1.t) - tx(p0.t), ty(p1.surplus) - ty(p0.surplus))) || 1;
+    const d12 = Math.sqrt(Math.hypot(tx(p2.t) - tx(p1.t), ty(p2.surplus) - ty(p1.surplus))) || 1;
+    const d23 = Math.sqrt(Math.hypot(tx(p3.t) - tx(p2.t), ty(p3.surplus) - ty(p2.surplus))) || 1;
+    // Centripetal tangents scaled by chord lengths
+    const m1x = (tx(p2.t) - tx(p0.t)) * d12 / (d01 + d12) / 3;
+    const m1y = (ty(p2.surplus) - ty(p0.surplus)) * d12 / (d01 + d12) / 3;
+    const m2x = (tx(p3.t) - tx(p1.t)) * d12 / (d12 + d23) / 3;
+    const m2y = (ty(p3.surplus) - ty(p1.surplus)) * d12 / (d12 + d23) / 3;
+    const cp1x = tx(p1.t) + m1x;
+    const cp1y = ty(p1.surplus) + m1y;
+    const cp2x = tx(p2.t) - m2x;
+    const cp2y = ty(p2.surplus) - m2y;
     ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, tx(p2.t), ty(p2.surplus));
   }
   ctx.stroke();
