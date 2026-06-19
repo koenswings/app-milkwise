@@ -29,7 +29,8 @@ export function buildTrendPoints(
   now: number
 ): TrendPoint[] {
   const T_START = now - windowMs;
-  return feeds
+  return [...feeds]
+    .sort((a, b) => a.timestamp - b.timestamp)
     .filter(f => f.timestamp >= T_START && f.timestamp <= now)
     .map(f => {
       const target = dailyTargetAtTime(f.timestamp, weights, mlPerKgPerDay, fallbackWeight);
