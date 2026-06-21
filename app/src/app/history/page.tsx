@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { getFeeds, deleteFeed, updateFeed, getSettings, getWeights, addWeight, updateWeight, deleteWeight } from "@/lib/store";
 import { formatDateTime } from "@/lib/formatTime";
-import { feedsWithCredit } from "@/lib/calculations";
+import { waterToMilk, milkToWater, feedsWithCredit } from "@/lib/calculations";
 import { FeedWithCredit, Settings } from "@/types";
 import { WeightEntry } from "@/lib/weights";
 import BottomNav from "@/components/BottomNav";
@@ -22,6 +22,7 @@ export default function HistoryPage() {
   const [search, setSearch] = useState("");
   const [editId, setEditId] = useState<string | null>(null);
   const [editVolume, setEditVolume] = useState("");
+  const [editUnit, setEditUnit] = useState<'water' | 'milk'>('water');
   const [editDatetime, setEditDatetime] = useState("");
   const [editWeightId, setEditWeightId] = useState<string|null>(null);
   const [editWeightKg, setEditWeightKg] = useState("");
@@ -47,16 +48,19 @@ export default function HistoryPage() {
 
   function startEdit(f: FeedWithCredit) {
     setEditId(f.id);
-    setEditVolume(String(f.volume));
+    setEditVolume(String(f.volume)); // always start in water ml
+    setEditUnit('water');
     setEditDatetime(toDatetimeLocal(f.timestamp));
   }
 
   async function handleEditSave(id: string) {
-    const vol = parseFloat(editVolume);
-    if (isNaN(vol) || vol <= 0) return;
+    const val = parseFloat(editVolume);
+    if (isNaN(val) || val <= 0) return;
+    // Convert to water ml for storage
+    const waterVol = editUnit === 'milk' ? Math.round(milkToWater(val)) : Math.round(val);
     const ts = new Date(editDatetime).getTime();
     if (isNaN(ts)) return;
-    await updateFeed(id, { volume: vol, timestamp: ts });
+    await updateFeed(id, { volume: waterVol, timestamp: ts });
     setEditId(null);
     await load();
   }
@@ -152,16 +156,48 @@ export default function HistoryPage() {
                     {isEditing ? (
                       <div className="mt-2 space-y-2">
                         <div className="flex items-center gap-2">
-                          <label className="text-xs text-slate-400 w-12">Volume</label>
+                          <label className="text-xs text-slate-400 w-12 shrink-0">Volume</label>
                           <input
                             type="number"
                             value={editVolume}
                             onChange={(e) => setEditVolume(e.target.value)}
                             className="w-24 bg-slate-700 border border-slate-600 rounded px-2 py-1 text-slate-100 text-sm"
                             step="any"
+                            min="1"
                             autoFocus
                           />
-                          <span className="text-slate-400 text-sm">ml</span>
+                          {/* Water / Milk toggle */}
+                          <div className="flex rounded overflow-hidden border border-slate-600 text-xs">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (editUnit === 'milk') {
+                                  // convert displayed milk value → water
+                                  const milkVal = parseFloat(editVolume);
+                                  if (!isNaN(milkVal)) setEditVolume(String(Math.round(milkToWater(milkVal))));
+                                  setEditUnit('water');
+                                }
+                              }}
+                              className={`px-2 py-1 ${editUnit === 'water' ? 'bg-blue-600 text-white' : 'bg-slate-700 text-slate-400 hover:bg-slate-600'}`}
+                            >water</button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (editUnit === 'water') {
+                                  // convert displayed water value → milk
+                                  const waterVal = parseFloat(editVolume);
+                                  if (!isNaN(waterVal)) setEditVolume(String(Math.round(waterToMilk(waterVal))));
+                                  setEditUnit('milk');
+                                }
+                              }}
+                              className={`px-2 py-1 ${editUnit === 'milk' ? 'bg-blue-600 text-white' : 'bg-slate-700 text-slate-400 hover:bg-slate-600'}`}
+                            >milk</button>
+                          </div>
+                          <span className="text-slate-500 text-xs">
+                            {editUnit === 'water'
+                              ? `= ${Math.round(waterToMilk(parseFloat(editVolume) || 0))} ml milk`
+                              : `= ${Math.round(milkToWater(parseFloat(editVolume) || 0))} ml water`}
+                          </span>
                         </div>
                         <div className="flex items-center gap-2">
                           <label className="text-xs text-slate-400 w-12">Time</label>
