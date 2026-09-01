@@ -11,7 +11,7 @@ interface Props {
 
 // ── View 0: Target — same template as StatusCard panel ──────────────────────
 function NumericView({ settings, derived }: Props) {
-  const milkPerBottle = waterToMilk(settings.standardBottleVolume);
+  const milkPerBottle = waterToMilk(settings.preferredBottleWaterMl);
   const targetBottles = derived.dailyTargetMl / milkPerBottle;
   const full = Math.floor(targetBottles);
   const partial = targetBottles - full;
@@ -20,7 +20,6 @@ function NumericView({ settings, derived }: Props) {
   const m = Math.round((derived.idealIntervalHours - h) * 60);
   const intervalLabel = h > 0 ? `${h}h ${m}m` : `${m}m`;
 
-  const cols = 4;
   const fullSlots = Math.min(full, totalSlots);
   const hasPartial = partial > 0.1 && fullSlots < totalSlots;
 
@@ -31,9 +30,9 @@ function NumericView({ settings, derived }: Props) {
       {/* Numbers full width — same layout as Status */}
       <div className="flex items-baseline justify-between mb-2">
         <span className="text-3xl font-bold leading-none tabular-nums text-slate-100">{Math.round(derived.dailyTargetMl)}<span className="text-base font-normal ml-0.5">ml</span></span>
-        <span className="text-3xl font-bold leading-none tabular-nums text-blue-300">{targetBottles.toFixed(1)}<span className="text-base font-normal text-slate-500 ml-0.5">× {settings.standardBottleVolume}ml bottles</span></span>
+        <span className="text-3xl font-bold leading-none tabular-nums text-blue-300">{targetBottles.toFixed(1)}<span className="text-base font-normal text-slate-500 ml-0.5">× {settings.preferredBottleWaterMl}ml bottles</span></span>
       </div>
-      <div className="text-sm text-slate-400 mb-1">{settings.standardBottleVolume} ml · every {intervalLabel}</div>
+      <div className="text-sm text-slate-400 mb-1">{settings.preferredBottleWaterMl} ml · every {intervalLabel}</div>
       <div className="text-xs text-slate-600 mb-2">{settings.weightKg} kg × {settings.mlPerKgPerDay} ml/kg</div>
 
       {/* Bottle pictograms below — full width, same as Status */}
@@ -42,8 +41,8 @@ function NumericView({ settings, derived }: Props) {
           const isFull = i < fullSlots;
           const isPartial = hasPartial && i === fullSlots;
           const label = isPartial
-            ? Math.round(partial * milkPerBottle)  // remainder ml for partial
-            : settings.standardBottleVolume;        // full bottle water ml
+            ? Math.round(partial * milkPerBottle)      // remainder ml for partial
+            : settings.preferredBottleWaterMl;         // full bottle water ml
           return (
             <div key={i} className="flex flex-col items-center">
               <span
@@ -61,7 +60,7 @@ function NumericView({ settings, derived }: Props) {
 
 // ── View 1: Bottle Parade ────────────────────────────────────────────────────
 function BottleParadeView({ settings, derived }: Props) {
-  const milkPerBottle = waterToMilk(settings.standardBottleVolume);
+  const milkPerBottle = waterToMilk(settings.preferredBottleWaterMl);
   const totalBottles = derived.dailyTargetMl / milkPerBottle;
   const full = Math.floor(totalBottles);
   const partial = totalBottles - full;
@@ -78,7 +77,7 @@ function BottleParadeView({ settings, derived }: Props) {
         )}
       </div>
       <div className="text-slate-300 text-sm">
-        <span className="font-bold text-slate-100">{totalBottles.toFixed(1)}</span> bottles of {settings.standardBottleVolume} ml
+        <span className="font-bold text-slate-100">{totalBottles.toFixed(1)}</span> bottles of {settings.preferredBottleWaterMl} ml
       </div>
       <div className="text-xs text-slate-500 mt-0.5">{Math.round(derived.dailyTargetMl)} ml target</div>
     </div>
@@ -150,7 +149,7 @@ function FunFactsView({ settings, derived }: Props) {
 
 // ── Extra view A: Progress bar (matched with StatusCard ProgressView) ────────
 function TargetProgressView({ settings, derived }: Props) {
-  const milkPerBottle = waterToMilk(settings.standardBottleVolume);
+  const milkPerBottle = waterToMilk(settings.preferredBottleWaterMl);
   const targetBottles = derived.dailyTargetMl / milkPerBottle;
   const h = Math.floor(derived.idealIntervalHours);
   const m = Math.round((derived.idealIntervalHours - h) * 60);
@@ -173,7 +172,7 @@ function TargetProgressView({ settings, derived }: Props) {
 
 // ── Extra view B: Number spotlight (matched with StatusCard SpotlightView) ───
 function TargetSpotlightView({ settings, derived }: Props) {
-  const milkPerBottle = waterToMilk(settings.standardBottleVolume);
+  const milkPerBottle = waterToMilk(settings.preferredBottleWaterMl);
   const targetBottles = derived.dailyTargetMl / milkPerBottle;
   const h = Math.floor(derived.idealIntervalHours);
   const m = Math.round((derived.idealIntervalHours - h) * 60);
@@ -187,7 +186,7 @@ function TargetSpotlightView({ settings, derived }: Props) {
         </div>
         <div>
           <div className="text-4xl font-black text-blue-300 tabular-nums">{targetBottles.toFixed(1)}</div>
-          <div className="text-xs text-slate-400 mt-0.5">bottles of {settings.standardBottleVolume} ml</div>
+          <div className="text-xs text-slate-400 mt-0.5">bottles of {settings.preferredBottleWaterMl} ml</div>
         </div>
       </div>
       <div className="text-xs text-slate-600 text-center mt-2">every {h > 0 ? `${h}h ${m}m` : `${m}m`}</div>

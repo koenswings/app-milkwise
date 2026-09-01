@@ -11,7 +11,7 @@ interface Props {
   smoothedBottles: number;
   pct: number;
   dailyTargetMl: number;
-  standardBottleVolume: number;
+  preferredBottleWaterMl: number;
   hourlyRate: number;
   yellowThresholdPct: number;
   redThresholdPct: number;
@@ -151,7 +151,7 @@ export default function SmoothedCard(props: Props) {
         <SmoothedExplainer
           onClose={() => setShowExplainer(false)}
           hourlyRate={props.hourlyRate}
-          standardBottleVolume={props.standardBottleVolume}
+          preferredBottleWaterMl={props.preferredBottleWaterMl}
           dailyTargetMl={props.dailyTargetMl}
           feeds={props.feeds}
           now={props.now}

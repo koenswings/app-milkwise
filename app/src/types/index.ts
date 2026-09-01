@@ -8,27 +8,41 @@ export interface Feed {
 export interface Settings {
   weightKg: number;
   mlPerKgPerDay: number;
-  standardBottleVolume: number;       // configured standard bottle (water ml) for Settings page
-  displayBottleVolumeWater: number;   // bottle size (water ml) used to express bottles in Target/Status cards
-  yellowThresholdPct: number;         // default 5
-  redThresholdPct: number;            // default 10
+  preferredBottleWaterMl: number;  // preferred bottle size in water ml (60/90/120/150)
+  yellowThresholdPct: number;      // default 5
+  redThresholdPct: number;         // default 10
   timeFormat: '24h' | '12h';
-  maxCorrectionPct: number;           // default 25
-  useTargetAwarePredictor: boolean;   // default true — Predictor 3 (T*). false = Predictor 2 (Formula S)
-  nextBottleWaterMl: number;          // bottle size (water ml) assumed for next T* calculation
+}
+
+export interface PredictorResult {
+  // Predictor A
+  predictorATimestamp: number;
+  predictorAVolumeMilk: number;
+  predictorAVolumeWater: number;
+  predictorACapped: boolean;
+  predictorASurplus: boolean;
+  predictorACapNote?: string;
+  // Predictor B
+  predictorBTimestamp: number;
+  predictorBStomachLimited: boolean;
+  predictorBCapped: boolean;
+  predictorBFloorTimestamp: number;
+  // Shared
+  standardIntervalMs: number;
+  stomachCapMilk: number;
 }
 
 export interface NextFeedResult {
   timestamp: number;              // suggested next feed time (ms)
   balanceMl: number;              // energy balance ml (+ overfed, - underfed)
-  capped: boolean;                // true if ±maxCorrectionPct cap was applied
+  capped: boolean;                // true if cap was applied
 }
 
 export interface DerivedSettings {
   dailyTargetMl: number;      // prepared formula ml/day (milk ml)
   hourlyRate: number;         // prepared formula ml/hour (milk ml)
   idealIntervalHours: number; // hours between feeds
-  milkPerBottle: number;      // prepared formula ml per standardBottleVolume of water
+  milkPerBottle: number;      // prepared formula ml per preferredBottleWaterMl of water
 }
 
 export interface FeedWithCredit extends Feed {

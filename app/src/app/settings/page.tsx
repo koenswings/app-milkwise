@@ -2,28 +2,23 @@
 
 import { useEffect, useState, useRef } from "react";
 import { getSettings, saveSettings, getFeeds, saveFeeds, generateId } from "@/lib/store";
-import { deriveSettings } from "@/lib/calculations";
+import { deriveSettings, waterToMilk } from "@/lib/calculations";
 import { Settings, Feed } from "@/types";
 import BottomNav from "@/components/BottomNav";
 import { useRouter } from "next/navigation";
 
-const APP_VERSION = "1.0.81";
+const APP_VERSION = "1.0.86";
 
 export default function SettingsPage() {
   const [settings, setSettings] = useState<Settings>({
     weightKg: 6.27,
     mlPerKgPerDay: 150,
-    standardBottleVolume: 90,
+    preferredBottleWaterMl: 90,
     yellowThresholdPct: 5,
     redThresholdPct: 10,
     timeFormat: '24h',
-    displayBottleVolumeWater: 90,
-    maxCorrectionPct: 25,
-    useTargetAwarePredictor: true,
-    nextBottleWaterMl: 90,
   });
   const [saved, setSaved] = useState(false);
-  // Local string values so inputs don't snap back while typing (e.g. clearing "90" to type "120")
   const [localValues, setLocalValues] = useState<Partial<Record<keyof Settings, string>>>({});
   const [importText, setImportText] = useState("");
   const [importMsg, setImportMsg] = useState("");
@@ -42,7 +37,6 @@ export default function SettingsPage() {
     setTimeout(() => setSaved(false), 2000);
   }
 
-  // Update local display string while typing; don't commit until valid
   function handleChange(field: keyof Settings, value: string) {
     setLocalValues((prev) => ({ ...prev, [field]: value }));
     const num = parseFloat(value);
@@ -51,7 +45,6 @@ export default function SettingsPage() {
     }
   }
 
-  // On blur: if empty/invalid, revert local display to committed setting value
   function handleBlur(field: keyof Settings) {
     setLocalValues((prev) => {
       const updated = { ...prev };
@@ -70,11 +63,9 @@ export default function SettingsPage() {
     let skipped = 0;
 
     for (const line of lines) {
-      // Support: "Date,Time,Volume" or "Date,Time,Volume ml" or just 3 CSV cols
       const parts = line.split(",").map((s) => s.trim());
       if (parts.length < 3) { skipped++; continue; }
       const [dateStr, timeStr, volRaw] = parts;
-      // Skip header row
       if (dateStr.toLowerCase() === "date") continue;
       const volume = parseFloat(volRaw.replace(/[^0-9.]/g, ""));
       if (isNaN(volume) || volume <= 0) { skipped++; continue; }
@@ -102,11 +93,18 @@ export default function SettingsPage() {
     setImportText(text);
   }
 
+  const siMs = (waterToMilk(settings.preferredBottleWaterMl) / derived.hourlyRate) * 3_600_000;
+  const siMins = Math.round(siMs / 60_000);
+  const siH = Math.floor(siMins / 60);
+  const siM = siMins % 60;
+  const siLabel = siH > 0 ? `${siH}h ${siM}m` : `${siM}m`;
+
   return (
     <div className="max-w-lg mx-auto px-4 pt-6 pb-24">
       <h1 className="text-2xl font-bold text-slate-100 mb-6">⚙️ Settings</h1>
 
       <div className="space-y-4 mb-6">
+        {/* Baby weight */}
         <div className="bg-slate-800 rounded-xl p-4">
           <label className="block text-sm text-slate-400 mb-1">Baby weight (kg)</label>
           <input
@@ -121,6 +119,7 @@ export default function SettingsPage() {
           />
         </div>
 
+        {/* ml per kg per day */}
         <div className="bg-slate-800 rounded-xl p-4">
           <label className="block text-sm text-slate-400 mb-1">ml per kg per day</label>
           <input
@@ -135,8 +134,36 @@ export default function SettingsPage() {
           />
         </div>
 
+        {/* Preferred bottle size */}
+        <div className="bg-slate-800 rounded-xl p-4">
+          <label className="block text-sm text-slate-400 mb-2">Preferred bottle size</label>
+          <div className="grid grid-cols-2 gap-2">
+            {([60, 90, 120, 150] as const).map((size) => {
+              const milkMl = Math.round(waterToMilk(size));
+              const isSelected = settings.preferredBottleWaterMl === size;
+              return (
+                <button
+                  key={size}
+                  type="button"
+                  onClick={() => setSettings((prev) => ({ ...prev, preferredBottleWaterMl: size }))}
+                  className={`py-3 rounded-lg font-semibold transition-colors flex flex-col items-center gap-0.5 ${
+                    isSelected
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                  }`}
+                >
+                  <span>{size} ml water</span>
+                  <span className={`text-xs ${isSelected ? 'text-blue-200' : 'text-slate-500'}`}>= {milkMl} ml milk</span>
+                </button>
+              );
+            })}
+          </div>
+          <p className="text-xs text-slate-500 mt-2">
+            Used for standard interval, Predictor A target, and bottle count display.
+          </p>
+        </div>
 
-
+        {/* On-track zone */}
         <div className="bg-slate-800 rounded-xl p-4">
           <label className="block text-sm text-slate-400 mb-1">On-track zone (±%)</label>
           <input
@@ -151,6 +178,7 @@ export default function SettingsPage() {
           />
         </div>
 
+        {/* Seriously off threshold */}
         <div className="bg-slate-800 rounded-xl p-4">
           <label className="block text-sm text-slate-400 mb-1">Seriously off threshold (±%)</label>
           <input
@@ -168,73 +196,7 @@ export default function SettingsPage() {
           </p>
         </div>
 
-        <div className="bg-slate-800 rounded-xl p-4">
-          <label className="block text-sm text-slate-400 mb-2">Display bottle size</label>
-          <div className="flex gap-2">
-            {[60, 90, 120].map((size) => (
-              <button
-                key={size}
-                type="button"
-                onClick={() => setSettings((prev) => ({ ...prev, displayBottleVolumeWater: size }))}
-                className={`flex-1 py-3 rounded-lg font-semibold transition-colors ${
-                  settings.displayBottleVolumeWater === size
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
-                }`}
-              >
-                {size} ml
-              </button>
-            ))}
-          </div>
-          <p className="text-xs text-slate-500 mt-2">
-            Bottle size used to express the number of bottles in the dashboard cards.
-          </p>
-        </div>
-
-        <div className="bg-slate-800 rounded-xl p-4">
-          <label className="block text-sm text-slate-400 mb-1">Max correction (%)</label>
-          <input
-            type="number"
-            value={fieldValue("maxCorrectionPct")}
-            onChange={(e) => handleChange("maxCorrectionPct", e.target.value)}
-            onBlur={() => handleBlur("maxCorrectionPct")}
-            step="5"
-            min="5"
-            max="50"
-            className="w-full bg-slate-700 border border-slate-600 rounded-lg px-4 py-3 text-slate-100 text-lg focus:outline-none focus:border-blue-500"
-          />
-          <p className="text-xs text-slate-500 mt-2">
-            Max shift of adjusted next feed = ±this % of ideal interval. 25% of 148min = ±37min. Default: 25.
-          </p>
-        </div>
-
-        <div className="bg-slate-800 rounded-xl p-4">
-          <label className="block text-sm text-slate-400 mb-2">Next feed predictor</label>
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={() => setSettings((prev) => ({ ...prev, useTargetAwarePredictor: true }))}
-              className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-colors ${
-                settings.useTargetAwarePredictor ? 'bg-blue-600 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
-              }`}
-            >
-              Predictor 3 — Optimised
-            </button>
-            <button
-              type="button"
-              onClick={() => setSettings((prev) => ({ ...prev, useTargetAwarePredictor: false }))}
-              className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-colors ${
-                !settings.useTargetAwarePredictor ? 'bg-blue-600 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
-              }`}
-            >
-              Predictor 2 — Adjusted
-            </button>
-          </div>
-          <p className="text-xs text-slate-500 mt-2">
-            T*: guarantees zero surplus after next feed (if not capped). Formula S: fast approximation.
-          </p>
-        </div>
-
+        {/* Time format */}
         <div className="bg-slate-800 rounded-xl p-4">
           <label className="block text-sm text-slate-400 mb-2">Time format</label>
           <div className="flex gap-2">
@@ -269,8 +231,8 @@ export default function SettingsPage() {
             <span className="text-slate-100 font-medium">{derived.hourlyRate.toFixed(2)} ml/h</span>
           </div>
           <div className="flex justify-between">
-            <span className="text-slate-400">Ideal interval</span>
-            <span className="text-slate-100 font-medium">{derived.idealIntervalHours.toFixed(2)} hours</span>
+            <span className="text-slate-400">Standard interval</span>
+            <span className="text-slate-100 font-medium">{siLabel}</span>
           </div>
         </div>
       </div>

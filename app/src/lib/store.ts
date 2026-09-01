@@ -53,14 +53,26 @@ export async function deleteFeed(id: string): Promise<Feed[]> {
   return updated;
 }
 
-const DEFAULT_SETTINGS = { weightKg: 6.27, mlPerKgPerDay: 150, standardBottleVolume: 90, displayBottleVolumeWater: 90, yellowThresholdPct: 5, redThresholdPct: 10, timeFormat: '24h' as const, maxCorrectionPct: 25, useTargetAwarePredictor: true, nextBottleWaterMl: 90 };
+const DEFAULT_SETTINGS: Settings = {
+  weightKg: 6.27,
+  mlPerKgPerDay: 150,
+  preferredBottleWaterMl: 90,
+  yellowThresholdPct: 5,
+  redThresholdPct: 10,
+  timeFormat: '24h' as const,
+};
 
 export async function getSettings(): Promise<Settings> {
   const res = await fetch("/api/settings", { cache: "no-store" });
   if (!res.ok) return DEFAULT_SETTINGS;
   const saved = await res.json();
   // Merge defaults so existing saved settings get new fields
-  return { ...DEFAULT_SETTINGS, ...saved };
+  const merged = { ...DEFAULT_SETTINGS, ...saved };
+  // Migration: if old fields exist, derive preferredBottleWaterMl from them
+  if (!merged.preferredBottleWaterMl) {
+    merged.preferredBottleWaterMl = saved.nextBottleWaterMl || saved.standardBottleVolume || 90;
+  }
+  return merged;
 }
 
 export async function saveSettings(settings: Settings): Promise<void> {

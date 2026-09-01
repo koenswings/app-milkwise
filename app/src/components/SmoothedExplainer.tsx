@@ -7,14 +7,14 @@ import { waterToMilk, FORMULA_TABLE, bottleCredit } from "@/lib/calculations";
 interface Props {
   onClose: () => void;
   hourlyRate: number;
-  standardBottleVolume: number;
+  preferredBottleWaterMl: number;
   dailyTargetMl: number;
   feeds: Feed[];
   now: number;
 }
 
-export default function SmoothedExplainer({ onClose, hourlyRate, standardBottleVolume, dailyTargetMl, feeds }: Props) {
-  const milkPerBottle = waterToMilk(standardBottleVolume);
+export default function SmoothedExplainer({ onClose, hourlyRate, preferredBottleWaterMl, dailyTargetMl, feeds }: Props) {
+  const milkPerBottle = waterToMilk(preferredBottleWaterMl);
 
   // ── Bottle credit table ───────────────────────────────────────────────────
   // The smoothed value is frozen at the most recent feed (the display principle),
@@ -161,7 +161,7 @@ export default function SmoothedExplainer({ onClose, hourlyRate, standardBottleV
               ))}
             </div>
             <p className="mt-2 text-sm text-slate-400">
-              A {standardBottleVolume} ml bottle = <strong className="text-slate-200">{milkPerBottle.toFixed(0)} ml</strong> of prepared formula.
+              A {preferredBottleWaterMl} ml bottle = <strong className="text-slate-200">{milkPerBottle.toFixed(0)} ml</strong> of prepared formula.
               Values between table entries are interpolated.
             </p>
           </section>
