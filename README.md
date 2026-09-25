@@ -15,6 +15,7 @@ Daily targets, hourly rate, and ideal feed intervals are all calculated from the
 
 ```
 compose.yaml       # App Disk manifest + Docker Compose
+app.yaml           # Build approach, upstream monitors, Engine compatibility (engine_tested set by the App Harness)
 icon.png           # App icon
 app/               # Next.js application source
   Dockerfile       # ARM-compatible production build
