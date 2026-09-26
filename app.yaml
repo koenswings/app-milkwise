@@ -1,0 +1,23 @@
+app: milkwise
+idea_app_version: "1.0"
+
+compatibility:
+  engine_min: "0.9.0"       # minimum Engine version this App Disk requires
+  engine_tested: "unknown"  # written by the App Harness after a passing run
+
+services:
+  - name: milkwise
+    build: custom
+    dockerfile: app/Dockerfile
+    base_image: node:22-alpine
+    image: koenswings/milkwise
+    current_version: "1.0.65"   # compose.yaml x-app.version / image tag
+    notes: >
+      MilkWise is developed in-house (Next.js standalone build in app/).
+      The image is built on an ARM64 Pi and tagged with the x-app version.
+      There is no upstream application release to track; only the base image.
+    monitors:
+      - kind: dockerhub
+        repo: library/node
+        tag_pattern: "^22-alpine$"
+        notes: "Base image of app/Dockerfile. Rebuild when node:22-alpine gets security updates."
