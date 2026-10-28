@@ -16,6 +16,14 @@ x-app:
   author: Koen Swings
   version: 1.0.65
   instanceName: milkwise
+  # updateApp (idea#351, agent-app-dev#23). healthTimeout in seconds: placeholder 600 (10 min)
+  # until the #351 first-start timings are in.
+  healthCheck:
+    path: /api/settings
+  healthTimeout: 600
+  updatesFrom: []
+  migrationNote: MilkWise keeps all logged feeds and weights.
+  snapshotExclude: []
 
 services:
   milkwise:
