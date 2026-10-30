@@ -16,6 +16,14 @@ x-app:
   author: Koen Swings
   version: 1.0.65
   instanceName: milkwise
+  # updateApp (idea#351, agent-app-dev#23). healthTimeout: integer seconds.
+  # No migration measured: default 600 s.
+  healthCheck:
+    path: /api/settings
+  healthTimeout: 600
+  updatesFrom: []
+  migrationNote: MilkWise keeps all logged feeds and weights.
+  snapshotExclude: []
 
 services:
   milkwise:
@@ -35,3 +43,9 @@ services:
       - DATA_DIR=/app/data
       - NODE_ENV=production
       - HOSTNAME=0.0.0.0
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:3333/api/settings"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
