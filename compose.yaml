@@ -33,7 +33,7 @@ x-app:
   # leftover .<file>.<pid>.<ts>.tmp files are harmless and need no exclude.
   backup:
     method: hook
-    fallback: stop        # only if `docker compose exec` itself fails; a stopped instance is never stopped again
+    fallback: fail        # Koen: no downtime; if the hook exec fails, the backup fails (visible in the result) instead of stopping the app
     hookTimeout: 30
     preHook:
       service: milkwise
