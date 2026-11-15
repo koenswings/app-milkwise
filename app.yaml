@@ -1,5 +1,5 @@
 app: milkwise
-idea_app_version: "1.0"
+idea_app_version: "1.1"
 
 compatibility:
   engine_min: "0.9.0"       # minimum Engine version this App Disk requires
@@ -9,13 +9,16 @@ services:
   - name: milkwise
     build: custom
     dockerfile: app/Dockerfile
+    upstream_repo: koenswings/baby-milk-tracker
+    upstream_commit: 715734bf6a70c651dbe0dc5482f15fc6fda3fa7d   # web 1.1.58; scripts/build-image.sh
     base_image: node:22-alpine
     image: koenswings/milkwise
-    current_version: "1.0.65"   # compose.yaml x-app.version / image tag
+    current_version: "1.1.58"   # image tag (compose.yaml x-app.version 1.1)
     notes: >
-      MilkWise is developed in-house (Next.js standalone build in app/).
-      The image is built on an ARM64 Pi and tagged with the x-app version.
-      There is no upstream application release to track; only the base image.
+      MilkWise web is developed in-house in koenswings/baby-milk-tracker (Next.js
+      standalone). scripts/build-image.sh checks out upstream_commit, builds it with
+      app/Dockerfile on an ARM64 Pi and tags it with the upstream package.json version.
+      There is no public upstream release to track; only the base image.
     monitors:
       - kind: dockerhub
         repo: library/node

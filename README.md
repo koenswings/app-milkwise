@@ -25,13 +25,22 @@ data/              # Runtime data (feeds.json, settings.json) — gitignored
 
 ## Building the image
 
-```bash
-# Build ARM image on Pi
-docker build -t koenswings/milkwise:1.0.0 ./app
+The web app source lives in `koenswings/baby-milk-tracker`. The image is built from
+the commit pinned in `app.yaml` (`upstream_commit`, currently 715734b = web 1.1.58)
+with `app/Dockerfile`, on an arm64 Pi:
 
-# Push to DockerHub
-docker push koenswings/milkwise:1.0.0
+```bash
+scripts/build-image.sh            # -> koenswings/milkwise:1.1.58 (local only, no push)
 ```
+
+Publishing to a registry needs Koen's OK. `app/` holds an older vendored copy of the
+source (1.0.x) and is only used for its Dockerfile.
+
+## Backups
+
+`x-app.backup` uses `method: hook` with no-op (`true`) pre/post hooks: 1.1.57+ writes
+its JSON files atomically (temp + fsync + rename), so the Engine copies `./data` live
+without stopping the app. Nothing is excluded (`.env` is included).
 
 ## Running standalone (development)
 
