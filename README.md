@@ -2,6 +2,8 @@
 
 IDEA App Disk for MilkWise — a precision bottle-feeding tracker for parents.
 
+Current release: **1.0** (`x-app.version` and git tag). The service image is `koenswings/milkwise:1.0.65` (the image tag is not the App version). There is no GitHub Release object; the git tag is the release.
+
 ## What it does
 
 MilkWise tracks bottle feeds and calculates two key metrics:
