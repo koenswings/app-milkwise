@@ -18,7 +18,7 @@ compose.yaml       # App Disk manifest + Docker Compose
 app.yaml           # Build approach, upstream monitors, Engine compatibility (engine_tested set by the App Harness)
 icon.png           # App icon
 app/               # Next.js application source
-  Dockerfile       # ARM-compatible production build
+  Dockerfile       # ARM64 production build
   src/             # Application code
 data/              # Runtime data (feeds.json, settings.json) — gitignored
 ```
@@ -26,11 +26,11 @@ data/              # Runtime data (feeds.json, settings.json) — gitignored
 ## Building the image
 
 ```bash
-# Build ARM image on Pi
-docker build -t koenswings/milkwise:1.0.0 ./app
-
-# Push to DockerHub
-docker push koenswings/milkwise:1.0.0
+# Build on a claimed ARM64 pool Pi (never x86). Tag must match compose.yaml `image:`.
+# The App version is x-app.version (currently "1.0"), not the image tag.
+docker build --platform linux/arm64 -t koenswings/milkwise:1.0.65 ./app
+docker manifest inspect koenswings/milkwise:1.0.65 | grep arm64
+docker push koenswings/milkwise:1.0.65
 ```
 
 ## Running standalone (development)
@@ -43,7 +43,11 @@ npm run dev
 
 ## Data persistence
 
-Feed and settings data is stored in `./data/` as JSON files. Mount this directory as a volume to persist data across container restarts.
+Feed and settings data is stored as JSON files under `./data/` on the App Disk
+(`feeds.json`, `settings.json`). compose.yaml bind-mounts `./data` at `/app/data`
+inside the container. App data uses this relative `./data` bind, never a Docker
+named volume and never an absolute host path
+([idea#141](https://github.com/koenswings/idea/issues/141)).
 
 ## Release check against the previous release (idea#403)
 
